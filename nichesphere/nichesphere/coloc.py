@@ -216,7 +216,7 @@ def OvsE_coloc_test(observedColocProbs, expectedColocProbs, cell_types, testDist
 
 #%%
 def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None, 
-            BTsizedNodes=False, legend_ax=[0.7, 0.05, 0.15, 0.2]):
+            BTsizedNodes=False, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9):
 
     """Colocalisation network"""
     ## Just take into account differentially colocalised CT pairs (p<=0.05)
@@ -233,7 +233,8 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
 
     ## Edge thickness (NEW)
     for x in list(gCol.edges):
-        gCol[x[0]][x[1]]['weight'] = x_diff.loc[x[0], x[1]]
+        #gCol[x[0]][x[1]]['weight'] = x_diff.loc[x[0], x[1]]
+        gCol[x[0]][x[1]]['weight'] = np.abs(x_diff.loc[x[0], x[1]])
 
     weights = nx.get_edge_attributes(gCol,'weight').values()
     
@@ -256,12 +257,33 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     inter.index=edgeCols.index
     inter[edgeCols=='lightblue']=inter[edgeCols=='lightblue']/np.max(inter[edgeCols=='lightblue'])
     inter[edgeCols=='orange']=inter[edgeCols=='orange']/np.max(inter[edgeCols=='orange'])
-    pos = nx.drawing.nx_agraph.graphviz_layout(gCol,prog='neato')
+    #pos = nx.drawing.nx_agraph.graphviz_layout(gCol,prog='neato')
+
+    ### different layouts
+    if layout=='neato':
+        pos = nx.drawing.nx_agraph.graphviz_layout(gCol,prog='neato')
+    if layout=='dot':
+        pos = nx.drawing.nx_agraph.graphviz_layout(gCol,prog='dot')
+    if layout=='kamada_kawai':
+        pos = nx.drawing.kamada_kawai_layout(gCol)
+    if layout=='spring':
+        pos = nx.drawing.spring_layout(gCol)
+    if layout=='spectral':
+        pos = nx.drawing.spectral_layout(gCol)
+    if layout=='circular':
+        pos = nx.drawing.circular_layout(gCol)
+    if layout=='force_atlas2':
+        pos = nx.drawing.forceatlas2_layout(gCol)
+    if layout=='fruchterman_reingold':
+        pos = nx.drawing.fruchterman_reingold_layout(gCol)
+    if layout=='random':
+        pos = nx.drawing.random_layout(gCol)
 
     ## Label positions
     pos_attrs = {}
     for node, coords in pos.items():
-        pos_attrs[node] = (coords[0], coords[1]+9)
+        #pos_attrs[node] = (coords[0], coords[1]+9)
+        pos_attrs[node] = (coords[0], coords[1]+lab_spacing)
     
     f,ax1 = plt.subplots(1,1,figsize=(8,8),dpi=100) 
 

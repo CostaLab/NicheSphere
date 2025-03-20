@@ -216,8 +216,8 @@ def get_pairCatDFdir(niches_df):
         dataframe of cell pairs and corresponding niche pairs
     """
     pairsDir=[]
-    for ct in niches_df.cell[range(len(niches_df.cell)-1)]:
-        for ct2 in niches_df.cell[range(len(niches_df.cell)-1)]:
+    for ct in niches_df.cell[range(len(niches_df.cell))]:
+        for ct2 in niches_df.cell[range(len(niches_df.cell))]:
             pairsDir.append(ct+'->'+ct2)
     pairCatDFdir=pd.DataFrame(pairsDir, columns=['cell_pairs'])
     

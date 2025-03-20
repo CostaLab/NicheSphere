@@ -39,6 +39,7 @@ In our first example we will use data from the Myocardial Infarction atlas from 
     :glob:
 
     notebooks/Nichesphere_tutorial_MIvisium_coloc.ipynb
+    notebooks/Nichesphere_tutorial_MIvisium_comm.ipynb
 
 
 API

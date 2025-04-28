@@ -217,7 +217,7 @@ def OvsE_coloc_test(observedColocProbs, expectedColocProbs, cell_types, testDist
 
 #%%
 def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None, 
-            nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9, thr=0):
+            BTsizedNodes=False, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9):
 
     """Colocalisation network"""
     ## Just take into account differentially colocalised CT pairs (p<=0.05)
@@ -234,27 +234,31 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
 
     ## Edge thickness (NEW)
     for x in list(gCol.edges):
+        #gCol[x[0]][x[1]]['weight'] = x_diff.loc[x[0], x[1]]
         gCol[x[0]][x[1]]['weight'] = np.abs(x_diff.loc[x[0], x[1]])
 
-    #weights = nx.get_edge_attributes(gCol,'weight').values()
+    weights = nx.get_edge_attributes(gCol,'weight').values()
     
     ## Node color groups
     color_group=pd.Series(list(gCol.nodes))
     i=0
     for k in list(cell_group.keys()):
-        color_group[[nichesphere.tl.cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+        color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
         i=i+1
     
-#    ## Edge colors based on diff coloc
-#    edgeCols=pd.Series(['lightblue' if x_diff.loc[x[0], x[1]]<0 else 'orange' for x in list(gCol.edges)])
-#    edgeCols.index=[x[0]+'->'+x[1] for x in list(gCol.edges)]
+    ## Edge colors based on diff coloc
+    edgeCols=pd.Series(['lightblue' if x_diff.loc[x[0], x[1]]<0 else 'orange' for x in list(gCol.edges)])
+    edgeCols.index=[x[0]+'->'+x[1] for x in list(gCol.edges)]
     
-#    orange_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'orange']
-#    blue_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'lightblue']
+    orange_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'orange']
+    blue_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'lightblue']
 
-#    #normalised scores
-#    inter=pd.Series(np.abs(pd.Series(list(weights))))
-#    inter.index=edgeCols.index
+    #normalised scores
+    inter=pd.Series(np.abs(pd.Series(list(weights))))
+    inter.index=edgeCols.index
+    inter[edgeCols=='lightblue']=inter[edgeCols=='lightblue']/np.max(inter[edgeCols=='lightblue'])
+    inter[edgeCols=='orange']=inter[edgeCols=='orange']/np.max(inter[edgeCols=='orange'])
+    #pos = nx.drawing.nx_agraph.graphviz_layout(gCol,prog='neato')
 
     ### different layouts
     if layout=='neato':
@@ -279,58 +283,36 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     ## Label positions
     pos_attrs = {}
     for node, coords in pos.items():
+        #pos_attrs[node] = (coords[0], coords[1]+9)
         pos_attrs[node] = (coords[0], coords[1]+lab_spacing)
     
-    to_remove=[(a,b) for a, b, attrs in gCol.edges(data=True) if np.abs(attrs["weight"]) <=thr]
+    to_remove=[(a,b) for a, b, attrs in gCol.edges(data=True) if attrs["weight"] == 0]
     gCol.remove_edges_from(to_remove)
-
-    ###
-    weights = nx.get_edge_attributes(gCol,'weight').values()
-
-    ## Edge colors based on diff coloc
-    edgeCols=pd.Series(['lightblue' if x_diff.loc[x[0], x[1]]<0 else 'orange' for x in list(gCol.edges)])
-    edgeCols.index=[x[0]+'->'+x[1] for x in list(gCol.edges)]
-    
-    orange_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'orange']
-    blue_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'lightblue']
-
-    #normalised scores
-    inter=pd.Series(np.abs(pd.Series(list(weights))))
-    inter.index=edgeCols.index
     
     f,ax1 = plt.subplots(1,1,figsize=(8,8),dpi=100) 
-    ###
 
-    if nodeSize == 'betweeness':
+    ## Betweeness statistic sized nodes
+    if BTsizedNodes == True:
+        ## pagerank sized nodes
+        #npg = nx.pagerank(gCol,max_iter=1000, weight=None)
         npg = nx.betweenness_centrality(gCol)
         npg=list(npg.values())
-       
-        
         nx.draw_networkx_nodes(gCol,pos,node_size=50+1000*((npg)/(np.max(npg))),
             node_color=color_group,ax=ax1)
-
-    if nodeSize == 'pagerank':
-        ## pagerank sized nodes
-        npg = nx.pagerank(gCol,max_iter=1000, weight=None)
-        npg=list(npg.values())  
-        
-        nx.draw_networkx_nodes(gCol,pos,node_size=50+1000*((npg)/(np.max(npg))),
-            node_color=color_group,ax=ax1)
-
-    if nodeSize == None:
+    else:
         nx.draw_networkx_nodes(gCol,pos,node_color=color_group,ax=ax1)
 
     nx.draw_networkx_edges(gCol,pos=pos,edge_color=inter[edgeCols=='lightblue'],
-        connectionstyle="arc3,rad=0.15", arrowstyle='<->',
-        width=inter[edgeCols=='lightblue'],ax=ax1, edgelist=blue_edges, edge_cmap=cmap3, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
+        connectionstyle="arc3,rad=0.15",
+        width=5*inter[edgeCols=='lightblue'],ax=ax1, edgelist=blue_edges, edge_cmap=cmap3, edge_vmin=-1, edge_vmax=1)
     nx.draw_networkx_edges(gCol,pos=pos,edge_color=inter[edgeCols=='orange'],
-        connectionstyle="arc3,rad=0.15", arrowstyle='<->',
-        width=inter[edgeCols=='orange'],ax=ax1, edgelist=orange_edges, edge_cmap=cmap4, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
+        connectionstyle="arc3,rad=0.15",
+        width=5*inter[edgeCols=='orange'],ax=ax1, edgelist=orange_edges, edge_cmap=cmap4 , edge_vmin=-1, edge_vmax=1)
     nx.draw_networkx_labels(gCol,pos_attrs, font_size=12, font_weight='bold', clip_on=False,ax=ax1)
 
     sm = plt.cm.ScalarMappable(cmap=cmap4)
     sm._A = []
-    sm.set_clim(-1*np.max(inter), np.max(inter))
+    sm.set_clim(-1, 1)
 
     cax = ax1.inset_axes(legend_ax)
     cax.set_xticks([])
@@ -338,13 +320,12 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     cax.patch.set_alpha(1)
     cax.axis('off')
     x=plt.colorbar(sm, ax=cax, fraction=0.2)
-    x.set_label('diffColoc. score', rotation=270, labelpad=15, size=10, weight='normal')
+    x.set_label('normalised diffColoc. score', rotation=270, labelpad=15, size=10, weight='normal')
+    x.solids.set(alpha=0.3)
 
     for x in list(gCol.edges):
+        #gCol[x[0]][x[1]]['weight'] = x_diff.loc[x[0], x[1]]
         gCol[x[0]][x[1]]['weight'] = x_diff.loc[x[0], x[1]]
-
-    to_remove=[(a,b) for a, b, attrs in gCol.edges(data=True) if np.abs(attrs["weight"]) <=thr]
-    gCol.remove_edges_from(to_remove)
     
     return gCol
 #%%

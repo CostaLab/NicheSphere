@@ -124,6 +124,7 @@ def PIC_BGdoubletsOEratios(adata_singlets):
     
     ## Get random singlets pairs
     pairNums=[i for i in range(int(np.round(adata_singlets.obs.shape[0]/2))) for _ in range(2)]
+    #random.seed(123)
     pairNumsIdx=random.sample(list(adata_singlets.obs.index), len(pairNums))
     rdf.pair[pairNumsIdx]=pairNums
 

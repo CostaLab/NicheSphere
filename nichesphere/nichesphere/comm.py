@@ -158,8 +158,8 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
     
     x=pd.Series(x.wilcoxStat)
     x_chem=pd.DataFrame(np.array(x).reshape(-1, ncells))
-    x_chem.columns=nichesphere.tl.unique([x.split('->')[0] for x in pairCatDF.cell_pairs])
-    x_chem.index=nichesphere.tl.unique([x.split('->')[0] for x in pairCatDF.cell_pairs])
+    x_chem.columns=unique([x.split('->')[0] for x in pairCatDF.cell_pairs])
+    x_chem.index=unique([x.split('->')[0] for x in pairCatDF.cell_pairs])
 
     ## Another way around: similarities
     ##Cosine similarity
@@ -197,7 +197,7 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
         color_group=pd.Series(list(G.nodes))
         i=0
         for k in list(cell_group.keys()):
-            color_group[[nichesphere.tl.cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+            color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
             i=i+1
         
     ## Edge thickness

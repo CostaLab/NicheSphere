@@ -40,7 +40,7 @@ cmap = plt.cm.RdBu
 # Get the colormap colors
 cmap3 = cmap(np.arange(cmap.N))
 # Set alpha (transparency)
-cmap3[:,-1] = np.linspace(0, 0.3, cmap.N)
+#cmap3[:,-1] = np.linspace(0, 0.3, cmap.N)
 # Create new colormap
 cmap3 = ListedColormap(cmap3)
 
@@ -49,7 +49,7 @@ cmap = plt.cm.RdBu_r
 # Get the colormap colors
 cmap4 = cmap(np.arange(cmap.N))
 # Set alpha (transparency)
-cmap4[:,-1] = np.linspace(0, 0.3, cmap.N)
+#cmap4[:,-1] = np.linspace(0, 0.3, cmap.N)
 # Create new colormap
 cmap4 = ListedColormap(cmap4)
 

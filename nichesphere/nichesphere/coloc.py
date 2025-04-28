@@ -242,7 +242,7 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     color_group=pd.Series(list(gCol.nodes))
     i=0
     for k in list(cell_group.keys()):
-        color_group[[nichesphere.tl.cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+        color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
         i=i+1
     
 #    ## Edge colors based on diff coloc

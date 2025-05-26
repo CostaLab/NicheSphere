@@ -17,42 +17,6 @@ import scanpy as sc
 #from . import tl
 from matplotlib.colors import ListedColormap
 
-# Choose colormap
-cmap = plt.cm.Blues
-# Get the colormap colors
-cmap1 = cmap(np.arange(cmap.N))
-# Set alpha (transparency)
-cmap1[:,-1] = np.linspace(0, 0.5, cmap.N)
-# Create new colormap
-cmap1 = ListedColormap(cmap1)
-
-# Choose colormap
-cmap = plt.cm.Reds
-# Get the colormap colors
-cmap2 = cmap(np.arange(cmap.N))
-# Set alpha
-cmap2[:,-1] = np.linspace(0, 0.5, cmap.N)
-# Create new colormap
-cmap2 = ListedColormap(cmap2)
-
-# Choose colormap
-cmap = plt.cm.RdBu
-# Get the colormap colors
-cmap3 = cmap(np.arange(cmap.N))
-# Set alpha (transparency)
-#cmap3[:,-1] = np.linspace(0, 0.3, cmap.N)
-# Create new colormap
-cmap3 = ListedColormap(cmap3)
-
-# Choose colormap
-cmap = plt.cm.RdBu_r
-# Get the colormap colors
-cmap4 = cmap(np.arange(cmap.N))
-# Set alpha (transparency)
-#cmap4[:,-1] = np.linspace(0, 0.3, cmap.N)
-# Create new colormap
-cmap4 = ListedColormap(cmap4)
-
 def cellCatContained(pair, cellCat):
     
     contained=[cellType in pair for cellType in cellCat]
@@ -217,7 +181,32 @@ def OvsE_coloc_test(observedColocProbs, expectedColocProbs, cell_types, testDist
 
 #%%
 def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None, 
-            nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9, thr=0):
+            nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9, thr=0, alpha=1, fsize=(8,8), pos=None, 
+            edge_scale=1):
+
+    
+    # Choose colormap
+    cmap = plt.cm.RdBu
+    # Get the colormap colors
+    cmap3 = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    cmap3[:,-1] = np.linspace(0, alpha, cmap.N)
+    c1=cmap3.copy()
+    # Create new colormap
+    cmap3 = ListedColormap(cmap3)
+    
+    # Choose colormap
+    cmap = plt.cm.RdBu_r
+    # Get the colormap colors
+    cmap4 = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    cmap4[:,-1] = np.linspace(0, alpha, cmap.N)
+    c2=cmap4.copy()
+    # Create new colormap
+    cmap4 = ListedColormap(cmap4)
+
+    colors = np.vstack((np.flip(c1[128:256], axis=0), c2[128:256]))
+    mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
     """Colocalisation network"""
     ## Just take into account differentially colocalised CT pairs (p<=0.05)
@@ -233,6 +222,7 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     gCol=nx.from_pandas_adjacency(adj, create_using=nx.Graph)
 
     ## Edge thickness (NEW)
+    #if comm_plot==False:
     for x in list(gCol.edges):
         gCol[x[0]][x[1]]['weight'] = np.abs(x_diff.loc[x[0], x[1]])
 
@@ -244,19 +234,10 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     for k in list(cell_group.keys()):
         color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
         i=i+1
-    
-#    ## Edge colors based on diff coloc
-#    edgeCols=pd.Series(['lightblue' if x_diff.loc[x[0], x[1]]<0 else 'orange' for x in list(gCol.edges)])
-#    edgeCols.index=[x[0]+'->'+x[1] for x in list(gCol.edges)]
-    
-#    orange_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'orange']
-#    blue_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'lightblue']
 
-#    #normalised scores
-#    inter=pd.Series(np.abs(pd.Series(list(weights))))
-#    inter.index=edgeCols.index
+########## layouts here
 
-    ### different layouts
+        ### different layouts
     if layout=='neato':
         pos = nx.drawing.nx_agraph.graphviz_layout(gCol,prog='neato')
     if layout=='dot':
@@ -275,6 +256,10 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
         pos = nx.drawing.fruchterman_reingold_layout(gCol)
     if layout=='random':
         pos = nx.drawing.random_layout(gCol)
+
+    if pos!=None:
+        pos=pos
+#########
 
     ## Label positions
     pos_attrs = {}
@@ -298,7 +283,7 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
     inter=pd.Series(np.abs(pd.Series(list(weights))))
     inter.index=edgeCols.index
     
-    f,ax1 = plt.subplots(1,1,figsize=(8,8),dpi=100) 
+    f,ax1 = plt.subplots(1,1,figsize=fsize,dpi=100) 
     ###
 
     if nodeSize == 'betweeness':
@@ -322,23 +307,26 @@ def colocNW(x_diff,adj, cell_group, group_cmap='tab20', ncols=20, clist=None,
 
     nx.draw_networkx_edges(gCol,pos=pos,edge_color=inter[edgeCols=='lightblue'],
         connectionstyle="arc3,rad=0.15", arrowstyle='<->',
-        width=inter[edgeCols=='lightblue'],ax=ax1, edgelist=blue_edges, edge_cmap=cmap3, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
+        width=inter[edgeCols=='lightblue']*edge_scale,ax=ax1, edgelist=blue_edges, edge_cmap=cmap3, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
     nx.draw_networkx_edges(gCol,pos=pos,edge_color=inter[edgeCols=='orange'],
         connectionstyle="arc3,rad=0.15", arrowstyle='<->',
-        width=inter[edgeCols=='orange'],ax=ax1, edgelist=orange_edges, edge_cmap=cmap4, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
+        width=inter[edgeCols=='orange']*edge_scale,ax=ax1, edgelist=orange_edges, edge_cmap=cmap4, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
     nx.draw_networkx_labels(gCol,pos_attrs, font_size=12, font_weight='bold', clip_on=False,ax=ax1)
 
-    sm = plt.cm.ScalarMappable(cmap=cmap4)
+    #sm = plt.cm.ScalarMappable(cmap='RdBu_r')
+    sm = plt.cm.ScalarMappable(cmap=mymap)
     sm._A = []
     sm.set_clim(-1*np.max(inter), np.max(inter))
+    #sm.set_alpha(alpha)
 
     cax = ax1.inset_axes(legend_ax)
     cax.set_xticks([])
     cax.set_yticks([])
-    cax.patch.set_alpha(1)
+    #cax.patch.set_alpha(alpha)
     cax.axis('off')
     x=plt.colorbar(sm, ax=cax, fraction=0.2)
     x.set_label('diffColoc. score', rotation=270, labelpad=15, size=10, weight='normal')
+    x.set_alpha(alpha)
 
     for x in list(gCol.edges):
         gCol[x[0]][x[1]]['weight'] = x_diff.loc[x[0], x[1]]

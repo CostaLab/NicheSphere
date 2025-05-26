@@ -17,42 +17,6 @@ import sklearn
 #from . import tl
 from matplotlib.colors import ListedColormap
 
-# Choose colormap
-cmap = plt.cm.Blues
-# Get the colormap colors
-cmap1 = cmap(np.arange(cmap.N))
-# Set alpha (transparency)
-cmap1[:,-1] = np.linspace(0, 0.5, cmap.N)
-# Create new colormap
-cmap1 = ListedColormap(cmap1)
-
-# Choose colormap
-cmap = plt.cm.Reds
-# Get the colormap colors
-cmap2 = cmap(np.arange(cmap.N))
-# Set alpha
-cmap2[:,-1] = np.linspace(0, 0.5, cmap.N)
-# Create new colormap
-cmap2 = ListedColormap(cmap2)
-
-# Choose colormap
-cmap = plt.cm.RdBu
-# Get the colormap colors
-cmap3 = cmap(np.arange(cmap.N))
-# Set alpha (transparency)
-#cmap3[:,-1] = np.linspace(0, 0.3, cmap.N)
-# Create new colormap
-cmap3 = ListedColormap(cmap3)
-
-# Choose colormap
-cmap = plt.cm.RdBu_r
-# Get the colormap colors
-cmap4 = cmap(np.arange(cmap.N))
-# Set alpha (transparency)
-#cmap4[:,-1] = np.linspace(0, 0.3, cmap.N)
-# Create new colormap
-cmap4 = ListedColormap(cmap4)
-
 def unique(array):
     uniq, index = np.unique(array, return_index=True)
     return uniq[index.argsort()]
@@ -174,7 +138,30 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
 #%%
 
 def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=None, plot_title='', 
-          clist=None, nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', thr=0):    
+          clist=None, nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', thr=0, fsize=(8,8), alpha=1, lab_spacing=7, edge_scale=1, pos=None):    
+
+    # Choose colormap
+    cmap = plt.cm.RdBu
+    # Get the colormap colors
+    cmap3 = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    cmap3[:,-1] = np.linspace(0, alpha, cmap.N)
+    c1=cmap3.copy()
+    # Create new colormap
+    cmap3 = ListedColormap(cmap3)
+    
+    # Choose colormap
+    cmap = plt.cm.RdBu_r
+    # Get the colormap colors
+    cmap4 = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    cmap4[:,-1] = np.linspace(0, alpha, cmap.N)
+    c2=cmap4.copy()
+    # Create new colormap
+    cmap4 = ListedColormap(cmap4)
+
+    colors = np.vstack((np.flip(c1[128:256], axis=0), c2[128:256]))
+    mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
     #cell group cmap
     cmap = plt.cm.get_cmap(group_cmap, ncols)
@@ -236,16 +223,19 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
     if layout=='random':
         pos = nx.drawing.random_layout(G)
 
+    if pos!=None:
+        pos=pos
+
     ## Label positions
     pos_attrs = {}
     for node, coords in pos.items():
-        pos_attrs[node] = (coords[0], coords[1]+7)
+        pos_attrs[node] = (coords[0], coords[1]+lab_spacing)
 
 
     #to_remove=[(a,b) for a, b, attrs in G.edges(data=True) if attrs["weight"] == 0]
     to_remove=[(a,b) for a, b, attrs in G.edges(data=True) if np.abs(attrs["weight"]) <= thr]
     G.remove_edges_from(to_remove)
-    f,ax1 = plt.subplots(1,1,figsize=(8,8),dpi=100) 
+    f,ax1 = plt.subplots(1,1,figsize=fsize,dpi=100) 
 
     ###
     weights=nx.get_edge_attributes(G,'weight').values()
@@ -290,25 +280,25 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
 
     nx.draw_networkx_edges(G,pos=pos_edges,edge_color=inter[edgeCols=='lightblue'],
             connectionstyle="arc3,rad=0.15",
-            width=inter[edgeCols=='lightblue'],ax=ax1, edgelist=blue_edges, edge_cmap=cmap3,edge_vmin=-1*np.max(inter), 
+            width=inter[edgeCols=='lightblue']*edge_scale,ax=ax1, edgelist=blue_edges, edge_cmap=cmap3,edge_vmin=-1*np.max(inter), 
             edge_vmax=np.max(inter), arrowsize=20)
     nx.draw_networkx_edges(G,pos=pos_edges,edge_color=inter[edgeCols=='orange'],
             connectionstyle="arc3,rad=0.15",
-            width=inter[edgeCols=='orange'],ax=ax1, edgelist=orange_edges, edge_cmap=cmap4,edge_vmin=-1*np.max(inter), 
+            width=inter[edgeCols=='orange']*edge_scale,ax=ax1, edgelist=orange_edges, edge_cmap=cmap4,edge_vmin=-1*np.max(inter), 
             edge_vmax=np.max(inter), arrowsize=20)
     
     nx.draw_networkx_labels(G,pos_attrs,verticalalignment='bottom',
         font_size=12,clip_on=False,ax=ax1, font_weight='bold')
     f.suptitle(plot_title)
     
-    sm = plt.cm.ScalarMappable(cmap=cmap4)
+    sm = plt.cm.ScalarMappable(cmap=mymap)
     sm._A = []
     sm.set_clim(-1*np.max(inter), np.max(inter))
 
     cax = ax1.inset_axes(legend_ax)
     cax.set_xticks([])
     cax.set_yticks([])
-    cax.patch.set_alpha(1)
+    cax.patch.set_alpha(alpha)
     cax.axis('off')
     x=plt.colorbar(sm, ax=cax, fraction=0.2)
     x.set_label('diffComm. score', rotation=270, labelpad=15, size=10, weight='normal')

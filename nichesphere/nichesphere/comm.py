@@ -138,7 +138,7 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
 #%%
 
 def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=None, plot_title='', 
-          clist=None, nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', thr=0, fsize=(8,8), alpha=1, lab_spacing=7, edge_scale=1):    
+          clist=None, nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', thr=0, fsize=(8,8), alpha=1, lab_spacing=7, edge_scale=1, pos=None):    
 
     # Choose colormap
     cmap = plt.cm.RdBu
@@ -222,6 +222,9 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
         pos = nx.drawing.fruchterman_reingold_layout(G)
     if layout=='random':
         pos = nx.drawing.random_layout(G)
+
+    if pos!=None:
+        pos=pos
 
     ## Label positions
     pos_attrs = {}

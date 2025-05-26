@@ -114,6 +114,7 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
     """adjacency matrix and test values for communication (one category at a time)"""
     x=pd.DataFrame(pairCatDF.cell_pairs)
     x['wilcoxStat']=0
+    x.index=pairCatDF.cell_pairs
 
     
     for i in diffCommTbl.columns:

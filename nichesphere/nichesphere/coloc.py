@@ -124,7 +124,7 @@ def diffColoc_test(coloc_pair_sample, sampleTypes, exp_condition, ctrl_condition
     return df
 
 #%%
-def spatialNichePlot(adata, cell_types, nicheDF, CTprobs=None, maxCT_col=None, spot_size=1, niche_colors=None, legend_fontsize=7, wspace=0.5, title="", legend_loc='right margin', save_name='test.pdf', ax=None):
+def spatialNichePlot(adata, cell_types, nicheDF, CTprobs=None, maxCT_col=None, spot_size=1, niche_colors=None, legend_fontsize=7, title="", legend_loc='right margin', save_name='test.pdf', ax=None):
     """ Plot niches and cell types in spatial data (MERFISH / visium slices)
         adata=sample specific spatial anndata object
         CTprobs=sample specific cell type probabilities per spot
@@ -160,9 +160,35 @@ def spatialNichePlot(adata, cell_types, nicheDF, CTprobs=None, maxCT_col=None, s
     #sc.pl.spatial(adata_ex, color=['maxCT', 'niche'], img_key=None, library_id=None, spot_size=200, save='_'+smpl+'_niches_cellST.pdf')
     #with plt.rc_context({"figure.figsize": (2, 2)}):
     #sc.pl.spatial(tmp, color=['maxCT', 'niche'], img_key=None, library_id=None, spot_size=spot_size, legend_fontsize=legend_fontsize, wspace=wspace, save=save_name)
-    sc.pl.spatial(tmp, color='niche', img_key=None, library_id=None, spot_size=spot_size, legend_fontsize=legend_fontsize, wspace=wspace, title = title,legend_loc=legend_loc, 
+    sc.pl.spatial(tmp, color='niche', img_key=None, library_id=None, spot_size=spot_size, legend_fontsize=legend_fontsize, title = title,legend_loc=legend_loc, 
                   save=save_name, ax=ax)
 
+#%%
+
+def spatialCTPlot(adata, cell_types, CTprobs=None, maxCT_col=None, spot_size=1, legend_fontsize=7, title="", legend_loc='right margin', save_name='test.pdf', ax=None):
+    """ Plot niches and cell types in spatial data (MERFISH / visium slices)
+        adata=sample specific spatial anndata object
+        CTprobs=sample specific cell type probabilities per spot
+        cell_types=categorical series of cell types
+        nicheDF=dataframe of cell types and niches (obtained previously via cells_niche_colors())
+        niche_colors=series of colors with niche names as indexes
+        maxCT_col=cell type column in sc spatial data
+    """
+    tmp=adata.copy()
+
+    if maxCT_col is None:
+        tmp.obs['maxCT']=[CTprobs.columns[np.argmax(CTprobs.loc[idx])] for idx in CTprobs.index]
+        tmp.obs.maxCT=tmp.obs.maxCT.astype('category')
+        #adata_ex.obs.maxCT.cat.categories=mudata['sc'].obs.cell_subtype2.cat.categories
+        for c in np.setdiff1d(cell_types.cat.categories,tmp.obs.maxCT.cat.categories):
+            tmp.obs.maxCT = tmp.obs.maxCT.cat.add_categories(c)
+        tmp.obs.maxCT=tmp.obs.maxCT.cat.reorder_categories(cell_types.cat.categories)
+    else:
+        tmp.obs['maxCT']=tmp.obs[maxCT_col]
+    
+    sc.pl.spatial(tmp, color='maxCT', img_key=None, library_id=None, spot_size=spot_size, legend_fontsize=legend_fontsize, title = title,legend_loc=legend_loc, 
+                  save=save_name, ax=ax)
+    
 #%%
 
 def OvsE_coloc_test(observedColocProbs, expectedColocProbs, cell_types, testDistribution, oneCTinteractions, p=0.05):

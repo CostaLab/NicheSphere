@@ -94,7 +94,7 @@ def diffCcommStats(c1CTpairScores_byCat, c2CTpairScores_byCat, cellCatCol):
     return diffCommTable
 #%%
 
-def plotDiffCcommStatsHM(diffCommTable, min_pval):
+def plotDiffCcommStatsHM(diffCommTable, min_pval, vmin=None, vmax=None):
     x=pd.Series(diffCommTable.wilcoxStat)
     ## Remove non significant values and NaNs
     x[[i>min_pval for i in np.array(diffCommTable.wilcoxPval)]]=0
@@ -105,7 +105,7 @@ def plotDiffCcommStatsHM(diffCommTable, min_pval):
     x_hm.index=diffCommTable.LRcat.unique()
     ## Plot heatmap
     sns.set_theme(font_scale=1.5)
-    plot=sns.clustermap(x_hm, cmap='RdBu_r', center=0)
+    plot=sns.clustermap(x_hm, cmap='RdBu_r', center=0, vmin=vmin, vmax=vmax)
     plt.setp(plot.ax_heatmap.yaxis.get_majorticklabels(), rotation=1)
     return x_hm, plot
 

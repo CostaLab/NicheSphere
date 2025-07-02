@@ -32,7 +32,7 @@ In your terminal window run::
 Tutorials
 =========
 
-In our first example we will use data from the Myocardial Infarction atlas from Kuppe, C. et. Al., 2022 to find differential co-localization domains related to ischemia.
+In our first example we will use data from the Myocardial Infarction atlas from Kuppe, C. et. Al., 2022 to find differential co-localization domains related to ischemia. The data you'll need to run the tutorials can be found here: https://zenodo.org/records/15790389?preview=1&token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjU3MTkzYmVlLWI4ZWItNGNlZS1hZGJhLWRiNjAxMWU0MjNmNyIsImRhdGEiOnt9LCJyYW5kb20iOiI1MTkzMGYzZDA1YmIyODg4MjZmODc2NjNlMTFiODcxZiJ9.RDwYH0UnKsr8Kw03P5WRuL1Gbr2GL10IzUHW_i8LU3GNFYSlP2LmOwRRApLP2hnZiO-yrg88F12WJjKAU_nn7A 
 
 .. nbgallery::
     :caption: Notebooks:

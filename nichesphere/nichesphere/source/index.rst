@@ -32,7 +32,7 @@ In your terminal window run::
 Tutorials
 =========
 
-In our first example we will use data from the Myocardial Infarction atlas from Kuppe, C. et. Al., 2022 to find differential co-localization domains related to ischemia. The data you'll need to run the tutorials can be found here: https://zenodo.org/records/15790389?preview=1&token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjU3MTkzYmVlLWI4ZWItNGNlZS1hZGJhLWRiNjAxMWU0MjNmNyIsImRhdGEiOnt9LCJyYW5kb20iOiI1MTkzMGYzZDA1YmIyODg4MjZmODc2NjNlMTFiODcxZiJ9.RDwYH0UnKsr8Kw03P5WRuL1Gbr2GL10IzUHW_i8LU3GNFYSlP2LmOwRRApLP2hnZiO-yrg88F12WJjKAU_nn7A 
+In our first example we will use data from the Myocardial Infarction atlas from Kuppe, C. et. Al., 2022 to find differential co-localization domains related to ischemia. The data you'll need to run the tutorials can be found here: https://doi.org/10.5281/zenodo.15790389  
 
 .. nbgallery::
     :caption: Notebooks:
@@ -40,6 +40,13 @@ In our first example we will use data from the Myocardial Infarction atlas from 
 
     notebooks/Nichesphere_tutorial_MIvisium_coloc.ipynb
     notebooks/Nichesphere_tutorial_MIvisium_comm.ipynb
+    notebooks/Nichesphere_tutorial_MIvisium_preprocessing.ipynb
+
+
+Docker image and summarized analysis tutorial
+=============================================
+
+We provide access to a Docker image, available at: https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3/container_registry. The Docker image comes preconfigured with all necessary libraries, tools, and software required to follow the hands-on exercises. Additionally, the repository at https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3 contains a summarized Nichesphere co-localization + communication analysis tutorial.
 
 
 API

@@ -109,8 +109,22 @@ def reshapeColoc(CTcoloc, oneCTinteractions='', complete=1):
 # %%
 def diffColoc_test(coloc_pair_sample, sampleTypes, exp_condition, ctrl_condition):
     """ Differential co-localization test with table of scores and p-values as output
-    Params=coloc_pair_sample (coloc per cell type pair per sample table), exp_condition (non control phenotype to test),
-    ctrl_condition (control phenotype), sampleTypes (dataframe with sample names and sample types columns named "sample" and "sampleType")
+
+    Parameters
+    ----------
+    coloc_pair_sample : pd.DataFrame
+        coloc per cell type pair per sample table
+    exp_condition : string
+        non control phenotype to test
+    ctrl_condition : string
+        control phenotype
+    sampleTypes : pd.DataFrame
+        dataframe with sample names and sample types columns named "sample" and "sampleType"
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Dataframe of ranksums test statistic and p-value per cell type pair
     """
     pvals=[scipy.stats.ranksums(coloc_pair_sample.loc[coloc_pair_sample.index[sampleTypes.sampleType==exp_condition],c], 
                                         coloc_pair_sample.loc[coloc_pair_sample.index[sampleTypes.sampleType==ctrl_condition],c]).pvalue for c in coloc_pair_sample.columns]
@@ -126,12 +140,25 @@ def diffColoc_test(coloc_pair_sample, sampleTypes, exp_condition, ctrl_condition
 #%%
 def spatialNichePlot(adata, cell_types, nicheDF, CTprobs=None, maxCT_col=None, spot_size=1, niche_colors=None, legend_fontsize=7, title="", legend_loc='right margin', save_name='test.pdf', ax=None):
     """ Plot niches and cell types in spatial data (MERFISH / visium slices)
-        adata=sample specific spatial anndata object
-        CTprobs=sample specific cell type probabilities per spot
-        cell_types=categorical series of cell types
-        nicheDF=dataframe of cell types and niches (obtained previously via cells_niche_colors())
-        niche_colors=series of colors with niche names as indexes
-        maxCT_col=cell type column in sc spatial data
+
+    Parameters
+    ----------
+    adata : AnnData
+        sample specific spatial anndata object
+    CTprobs : pd.DataFrame
+        sample specific cell type probabilities per spot
+    cell_types : pd.Series
+        categorical series of cell types
+    nicheDF : pd.DataFrame
+        dataframe of cell types and niches (obtained previously via cells_niche_colors())
+    niche_colors : pd.Series
+        series of colors with niche names as indexes
+    maxCT_col : string
+        cell type column in sc spatial data
+
+    Returns
+    -------
+    Spatial plot where spots are colored by niche 
     """
     tmp=adata.copy()
 

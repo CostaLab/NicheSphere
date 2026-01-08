@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+from typing import Dict, Any
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -22,6 +23,51 @@ import community_detection as signed_louvain
 from signet.cluster import Cluster
 
 import nichesphere
+
+
+# Available community detection methods
+UNSIGNED_METHODS = ['louvain_unsigned', 'cdlib_louvain', 'cdlib_leiden']
+SIGNED_METHODS = ['leidenalg_mod', 'louvain_signed', 'leidenalg_CPM', 
+                      'spinglass_weights', 'sponge_no_weights']
+
+def _get_unsigned_methods():
+    return UNSIGNED_METHODS
+
+def _get_signed_methods():
+    return SIGNED_METHODS
+
+def _choose_method(n: int) -> str:
+    '''
+    returns the method name corresponding to the index position in the list of all available methods
+    '''
+    method_list = UNSIGNED_METHODS + SIGNED_METHODS
+
+    if n > len(method_list)-1:
+        raise ValueError(f"Invalid method index '{n}'. Choose an index in the range of 0 to {len(method_list)-1}.")
+
+    return method_list[n]
+    
+
+# Default parameters for each community detection method 
+DEFAULT_PARAMS = {
+    # Unsigned methods
+    "louvain_unsigned": {"seed": 12, "resolution": 1.1},
+    "cdlib_louvain": {"seed": 12, "resolution": 1.1},
+    "cdlib_leiden": {"seed": 12, "resolution": 1.1},
+
+    # Signed methods
+    "leidenalg_mod": {"seed": 12},
+    "louvain_signed": {"seed": 12, "k": 2, "pass_max": 40},
+    "leidenalg_CPM": {"seed": 12, "resolution_CPM": 0.017},
+    "spinglass_weights": {"seed": 12, "spins": 25, "gamma": 1.0, "lambda": 0.8},
+    "sponge_no_weights": {"seed": 12, "n_clusters": 3},
+}
+
+def _get_default_params(name: str) -> Dict[str, Any]:
+    if name not in UNSIGNED_METHODS + SIGNED_METHODS:
+        raise ValueError(f"Invalid method name '{name}'.")
+
+    return DEFAULT_PARAMS[name]
 
 
 def niche_coloc_plot(
@@ -166,21 +212,38 @@ def niche_plot_community_clustering(
         print(pd.DataFrame.from_dict(community_dict, orient='index').T.to_string(index=False))
 
     return community_df
+    
 
+def _check_params(method_name: str, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """
+    Returns a complete parameter dictionary for a given method.
+    Only includes relevant parameters for that method.
+    Input argument `params` overrides defaults.
+    """
 
+    if method_name not in DEFAULT_PARAMS:
+        raise ValueError(f"Unknown method '{method_name}'.")
+
+    defaults = DEFAULT_PARAMS[method_name]
+    
+    # Keep only input keys that are in the defaults for the method
+    filtered_params = {k: v for k, v in (params or {}).items() if k in defaults}
+
+    return {**defaults, **filtered_params}
+    
 
 def community_detection(
+    *,
     gCol: nx.Graph,
     HM : pd.DataFrame,
     HMsimm: pd.DataFrame,
     method_name: str,
-    plot: bool,
-    save_plot: bool,
     cell_types: list,
-    community_names: list = None,
-    n_cluster: int = 3,
-    rnd_seed: int = 12
-) -> tuple[dict,dict]:
+    community_names: list[str] | None = None,
+    plot: bool = False,
+    save_plot: bool = False,
+    params: Dict[str, Any] | None = None,
+) -> tuple:
     """
     Performs community detection using various signed or unsigned algorithms and visualizes the results.
 
@@ -195,39 +258,38 @@ def community_detection(
         plot (bool): Whether to generate plots.
         save_plot (bool): Whether to save plots to file.
         cell_types (List[str]): List of cell type labels.
+        **params (dict): Fine tuning parameters for the community detection.
         community_names (List[str], optional): Custom labels for the resulting communities.
-        n_cluster (int, optional): Target number of clusters (for SPONGE). Defaults to 3.
-        rnd_seed (int, optional): Random seed for reproducibility. Defaults to 12.
 
     Returns:
         Dict[str, pd.DataFrame]: A dictionary where keys are method names and values are DataFrames of cell niche colors.
     """
-
-    unsigned_methods = {'louvain_unsigned', 'cdlib_louvain', 'cdlib_leiden'}
-    signed_methods = {'leidenalg_mod', 'louvain_signed', 'leidenalg_CPM', 
-                      'spinglass_weights', 'sponge_no_weights'}
     
-    if method_name not in unsigned_methods and method_name not in signed_methods:
+    if method_name not in UNSIGNED_METHODS and method_name not in SIGNED_METHODS:
         raise ValueError(f"Method '{method_name}' is not supported.")
+
+    # Check fine tuning parameters and use default
+    all_params = _check_params(method_name, params)
+   
     
     vc_map: dict[str, int] = {}
 
     ## Unsigned methods
-    if method_name in unsigned_methods:
+    if method_name in UNSIGNED_METHODS:
         # Reconstruct unsigned graph from adjacency matrix
         gCol_unsigned = nx.from_pandas_adjacency(HMsimm, create_using=nx.Graph)
-        g = gCol_unsigned        
+        g = gCol_unsigned      
 
         if method_name == 'louvain_unsigned':
-            comms = nx.community.louvain_communities(gCol_unsigned, resolution=1.1, seed=rnd_seed)
+            comms = nx.community.louvain_communities(gCol_unsigned, resolution = all_params['resolution'], seed = all_params['seed'])
             vc_map = {node: i for i, members in enumerate(comms) for node in members}
             
         elif method_name == 'cdlib_louvain':
-            clustering = algorithms.louvain(gCol_unsigned, weight='weight', resolution=1.1, randomize=False)
+            clustering = algorithms.louvain(gCol_unsigned, weight='weight', resolution =  all_params['resolution'], randomize = False)
             vc_map = {node: i for i, members in enumerate(clustering.communities) for node in members}
             
         elif method_name == 'cdlib_leiden':
-            clustering = algorithms.leiden(gCol_unsigned, weights='weight', resolution_parameter=1.1, seed=rnd_seed)
+            clustering = algorithms.leiden(gCol_unsigned, weights='weight', resolution_parameter =  all_params['resolution'], seed = all_params['seed'])
             vc_map = {node: i for i, members in enumerate(clustering.communities) for node in members}
 
     ## Signed methods 
@@ -236,7 +298,7 @@ def community_detection(
         gCol_ig = ig.Graph.from_networkx(gCol) # iGraoh
     
         if method_name == 'leidenalg_mod':
-            partition = la.find_partition(gCol_ig, la.ModularityVertexPartition, seed=rnd_seed)
+            partition = la.find_partition(gCol_ig, la.ModularityVertexPartition, seed=all_params['seed'])
             vc_map = {v['_nx_name']: partition.membership[v.index] for v in gCol_ig.vs}
             
         elif method_name == 'louvain_signed':
@@ -254,11 +316,11 @@ def community_detection(
                             layer_weights=[1., -1.],
                             resolutions=[1., 1.],
                             masks=[False, True],
-                            k=3,
+                            k=all_params['k'],
                             initial_membership=None,
                             weight='weight',
-                            random_state=rnd_seed,
-                            pass_max=40,
+                            random_state=all_params['seed'],
+                            pass_max=all_params['pass_max'],
                             return_dendogram=False,
                             silent=True)
             
@@ -279,16 +341,16 @@ def community_detection(
 
             partition = la.find_partition(
                 g_ig, la.CPMVertexPartition, 
-                weights='weight_pos', 
-                resolution_parameter=0.017, 
-                seed=rnd_seed
+                weights = 'weight_pos', 
+                resolution_parameter = all_params['resolution_CPM'], 
+                seed = all_params['seed']
             )
 
             vc_map = {v['_nx_name']: partition.membership[v.index] for v in gCol_ig.vs}
             
         elif method_name == 'spinglass_weights':
-            random.seed(rnd_seed)
-            partition = gCol_ig.community_spinglass(weights="weight", spins=25, gamma= 1.0, lambda_= 0.8, implementation='neg')
+            random.seed(all_params['seed'])
+            partition = gCol_ig.community_spinglass(weights="weight", spins=all_params['spins'], gamma=all_params['gamma'], lambda_=all_params['lambda'], implementation='neg')
             vc_map = {v['_nx_name']: partition.membership[v.index] for v in gCol_ig.vs}
             
         elif method_name == 'sponge_no_weights':
@@ -297,9 +359,9 @@ def community_detection(
             
             cluster_algo = Cluster((A.multiply(A>0), -A.multiply(A<0)))
             # Update method name to reflect K (affecting output key)
-            method_name = f'sponge_no_weights_k{n_cluster}'
-            np.random.seed(rnd_seed)
-            sponge_labels = cluster_algo.SPONGE(n_cluster)
+            method_name = (f'sponge_no_weights_k{all_params["n_clusters"]}')
+            np.random.seed(all_params['seed'])
+            sponge_labels = cluster_algo.SPONGE(all_params['n_clusters'])
 
             vc_map = {v['_nx_name']: int(sponge_labels[v.index]) for v in gCol_ig.vs}
 
@@ -309,6 +371,6 @@ def community_detection(
         cell_types, plot, save_plot, community_names
     )
 
-    return {method_name: communities_df}, {method_name: vc_map}
+    return communities_df, vc_map, all_params
 
     

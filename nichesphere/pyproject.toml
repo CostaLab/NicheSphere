@@ -2,7 +2,6 @@
 name = "nichesphere"
 version = "0.1.0"
 description = "bla"
-authors = ["Mayra Ruiz"]
 authors = [
     { name = "MayraRuizT", email = "aryam950812@gmail.com"},
     { name = "jsnagai", email = "james.nagai@gmail.com" }

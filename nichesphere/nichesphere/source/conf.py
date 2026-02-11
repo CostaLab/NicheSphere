@@ -37,4 +37,16 @@ language = 'English'
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
+# Path to the logo relative to the configuration directory
+html_logo = "_static/logo.png"
+
+# Ensure the static path is included so Sphinx finds the file
+html_static_path = ['_static']
+
+# (Optional) If you want ONLY the logo to show without the project name text
+html_theme_options = {
+    'logo_only': True,
+    'display_version': False,
+}
+
 

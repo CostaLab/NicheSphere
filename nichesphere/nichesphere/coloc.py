@@ -316,7 +316,8 @@ def OvsE_coloc_test(observedColocProbs, expectedColocProbs, cell_types, testDist
 def colocNW(x_diff,adj, cell_group, group=None, group_cmap='tab20', ncols=20, clist=None, 
             nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9, thr=0, alpha=1, fsize=(8,8), pos=None, 
             edge_scale=1):
-    """
+    """ (Differential) co-localization network
+    
     Parameters
     ----------
     xdiff : pd.DataFrame

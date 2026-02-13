@@ -3,30 +3,24 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Nichesphere's documentation!
+Welcome to NicheSphere's documentation!
 =======================================
 
-
-Introduction
-============
-
-**Nichesphere** is an sc-verse compatible Python library which allows the user to find differential co-localization domains / niches based on cell type pair co-localization probabilities in different conditions. Cell type pair co-localization probabilities can be obtained in different ways, for example, through deconvolution of spatial transcriptomics / PIC-seq data (getting the probabilities of finding each cell type in each spot / multiplet) ; or counting cell boundaries overlaps for each cell type pair in single cell spatial data (MERFISH , CODEX ...).
-
-It also offers the possibility to look at biological process based differential communication among differential co-localization domains based on Ligand-Receptor pairs expression data, such as results from CrossTalkeR [ref.].
+**NicheSphere** is an sc-verse compatible Python library which allows the user to find differential co-localization domains / niches and associated biological processes based on cell type pair co-localization probabilities in different conditions. 
 
 
-Installation
-============
+.. toctree::
+   :maxdepth: 2
+   :caption: About NicheSphere
 
-In your terminal window run::
+   about
 
-    conda create --name test python=3.10
-    conda activate test
-    conda install pip
-    pip install jupyterlab
-    conda install --channel conda-forge pygraphviz
-    conda install conda-forge::git
-    pip install git+https://github.com/CostaLab/Nichesphere#subdirectory=nichesphere
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Installation
+
+   installation
 
 
 Tutorials

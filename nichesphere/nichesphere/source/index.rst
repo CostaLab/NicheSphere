@@ -35,13 +35,12 @@ Docker image and summarized analysis tutorial
 We provide access to a Docker image, available at: https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3/container_registry. The Docker image comes preconfigured with all necessary libraries, tools, and software required to follow the hands-on exercises. Additionally, the repository at https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3 contains a summarized Nichesphere co-localization + communication analysis tutorial.
 
 
-API
-===
+.. toctree::
+   :maxdepth: 2
+   :caption: API
 
-:doc:`coloc`
+   api
 
-:doc:`comm`
 
-:doc:`tl`
 
 

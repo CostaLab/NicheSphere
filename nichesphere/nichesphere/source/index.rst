@@ -4,12 +4,6 @@
    contain the root `toctree` directive.
 
 Welcome to Nichesphere's documentation!
-
-```{eval-rst}
-..  figure:: _static/logo.png
-    :scale: 20%
-    :align: right
-```
 =======================================
 
 

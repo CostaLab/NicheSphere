@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import random
 import itertools
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import networkx as nx
 
 
 def get_spot_ct_props(spot_cell_props, sc_ct):

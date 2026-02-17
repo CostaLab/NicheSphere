@@ -1,7 +1,8 @@
-fake module
-=======================
+API
+===
 
-.. automodule:: fake
-   :members:
-   :undoc-members:
-   :show-inheritance:
+:doc:`coloc`
+
+:doc:`comm`
+
+:doc:`tl`

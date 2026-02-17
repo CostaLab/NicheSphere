@@ -1,18 +1,8 @@
 # %%
 import pandas as pd
 import numpy as np
-#import scipy
-#import seaborn as sns
 import random
-#import matplotlib.pyplot as plt
-#import matplotlib.colors as mcolors
-#import ot
-#import networkx as nx
 import itertools
-#import sklearn
-#import scanpy as sc
-
-#from matplotlib.colors import ListedColormap
 
 
 def get_spot_ct_props(spot_cell_props, sc_ct):
@@ -176,39 +166,6 @@ def getExpectedColocProbsFromSCs(sc_adata, sample, cell_types, sc_data_sampleCol
     scCTpairsProbs.index=[item for sublist in pci for item in sublist]
     return scCTpairsProbs
 #%%
-
-#def get_pairCatDFdir(niches, coloc_probs, coloc_clusts):
-    
-    """Get dataframe of cell pair to niche pair correspondence
-
-    Parameters
-    ----------
-    niches : dictionary
-        Dictionary with niche names as keys and their corresponding cell types as items (list per niche)
-    coloc_probs : pd.DataFrame
-        Concatenated dataframes of cell type pairs co-localization probabilities per sample (or any dataframe with cell types as columns)
-    coloc_clusts : pd.Series
-        Series of niches / clusters with cell types as index
-
-    Returns
-    -------
-    pairCatDFdir : pd.DataFrame
-        dataframe of cell pairs and corresponding niche pairs
-    """
-#    pairsDir=[]
-#    for ct in coloc_probs.columns[range(len(coloc_probs.columns)-1)]:
-#        for ct2 in coloc_probs.columns[range(len(coloc_probs.columns)-1)]:
-#            pairsDir.append(ct+'->'+ct2)
-#    pairCatDFdir=pd.DataFrame(pairsDir, columns=['cell_pairs'])
-    
-#    pairCatDFdir['niche_pairs']=''
-#    for clust in np.sort(coloc_clusts.unique()):
-#        pairCatDFdir['niche_pairs'][[cellCatContained(pair=p, cellCat=coloc_clusts.index[coloc_clusts==clust]) for p in pairCatDFdir.cell_pairs]]=clust+'->'+clust
-
-#    for comb in list(itertools.permutations(list(niches.keys()), 2)):
-#        pairCatDFdir['niche_pairs'][[(p.split('->')[0] in niches[comb[0]]) & (p.split('->')[1] in niches[comb[1]]) for p in pairCatDFdir.cell_pairs]]=comb[0]+'->'+comb[1]
-
-#    return pairCatDFdir
     
 def get_pairCatDFdir(niches_df):
     
@@ -264,3 +221,91 @@ def getColocFilter(pairCatDF, adj, oneCTints):
     colocFilt['filter'][colocFilt['filter']>0]=1
     colocFilt=pd.DataFrame(colocFilt['filter'], index=colocFilt.index, columns=['filter'])
     return colocFilt
+
+#%%
+def assign_properties(g, communities, colors, pos=None, node_coord_sf=200, simmilarity_weights=False, g_unsigned=None, alpha=1):
+    
+    ## Create color map for gravis interactive network (to move nodes around and change label sizes)
+    alpha=alpha
+    # Choose colormap for 1st half
+    cmap = plt.cm.RdBu
+    # Get the colormap colors
+    cmap3 = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    cmap3[:,-1] = np.linspace(0, alpha, cmap.N)
+    c1=cmap3.copy()
+    # Create new colormap
+    cmap3 = mcolors.ListedColormap(cmap3)
+        
+    # Choose colormap for 2nd half
+    cmap = plt.cm.RdBu_r
+    # Get the colormap colors
+    cmap4 = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    cmap4[:,-1] = np.linspace(0, alpha, cmap.N)
+    c2=cmap4.copy()
+    # Create new colormap
+    cmap4 = mcolors.ListedColormap(cmap4)
+
+    #Mixed color map
+    colors_edges = np.vstack((np.flip(c1[128:256], axis=0), c2[128:256]))
+    mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors_edges)
+
+    #get max. absolute weight in network to constraint color map
+    max_col=np.max(np.abs(list(nx.get_edge_attributes(g,'weight').values())))
+
+    #constraint color map
+    norm = mcolors.Normalize(vmin=-max_col, vmax=max_col)
+
+    # Centrality calculation
+    node_centralities_bet = nx.betweenness_centrality(g)
+    node_pr_uw = nx.pagerank(g, max_iter=1000, weight=None)
+    
+
+    # Graph properties
+    g.graph['node_border_size'] = 1.5
+    g.graph['node_border_color'] = 'white'
+    g.graph['edge_opacity'] = 0.9
+
+    # Node properties: Size by centrality, color by community
+    for node_id in g.nodes:
+        node = g.nodes[node_id]
+        node['size_betweeness'] = 10 + node_centralities_bet[node_id] * 100
+        node['size_pagerank_uw'] = 10 + node_pr_uw[node_id] * 100
+        node['shape'] = 'circle'
+        
+        for community_counter, community_members in enumerate(communities):
+            if node_id in community_members:
+                break
+        node['color'] = colors[community_counter % len(colors)]
+
+    if pos!=None:
+        # Add coordinates as node annotations that are recognized by gravis
+        for name, (x, y) in pos.items():
+            node = g.nodes[name]
+            node['x'] = x*node_coord_sf
+            node['y'] = y*node_coord_sf
+    
+    # Edge properties: Size and color by weight
+    for edge_id in g.edges:
+        edge =  g.edges[edge_id]
+        edge['color']=mcolors.to_hex(mymap(norm(edge['weight'])))
+
+        #### weights for plotting
+        edge['weight_signed']=edge['weight']
+        edge['weight_abs']=np.abs(edge['weight'])
+        edge['weight_exp']=np.exp(edge['weight'])
+    if simmilarity_weights==True:
+        for edge_id in g.edges:
+            #### simmilarity based weights
+            edge =  g.edges[edge_id]
+            edge['weight_simmilarity']=g_unsigned.edges[edge_id]['weight']
+
+        node_pr = nx.pagerank(g, max_iter=1000, weight='weight_simmilarity')
+
+        for node_id in g.nodes:
+            node = g.nodes[node_id]
+            node['size_pagerank'] = 10 + node_pr[node_id] * 100
+            
+            
+#%%

@@ -3,27 +3,43 @@ import pandas as pd
 import numpy as np
 import scipy
 import seaborn as sns
-#import random
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-#import ot
 import networkx as nx
-#import itertools
 import sklearn
-#import scanpy as sc
-#import sys
-#sys.path.append(".")
-#from tl import *
-#from . import tl
 from matplotlib.colors import ListedColormap
 
 def unique(array):
+    """get unique elements in array without re-sorting
+
+    Parameters
+    ----------
+    array : np.array
+
+    Returns
+    -------
+    uniq[index.argsort()] : np.array of unique elements of the original array in original order
+    """
     uniq, index = np.unique(array, return_index=True)
     return uniq[index.argsort()]
 
 #%%
 
 def cellCatContained(pair, cellCat):
+    """Check if a cell group (niche/type/category) is contained in a cell type pair
+
+    Parameters
+    ----------
+    pair : list
+        cell type list (usually cell type pairs in the form [cellTypeA,cellTypeB])
+
+    cellCat : list
+        list of cell types in a cell group (niche/type/category)
+
+    Returns
+    -------
+    True or False
+    """
     
     contained=[cellType in pair for cellType in cellCat]
     return True in contained
@@ -138,7 +154,7 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
 
 #%%
 
-def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=None, plot_title='', 
+def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, color_group=None, plot_title='', 
           clist=None, nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', thr=0, fsize=(8,8), alpha=1, lab_spacing=7, edge_scale=1, pos=None):    
 
     # Choose colormap
@@ -163,7 +179,16 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
 
     colors = np.vstack((np.flip(c1[128:256], axis=0), c2[128:256]))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
-
+    
+    cmap=mcolors.LinearSegmentedColormap.from_list("WhiteGray",['white','lightgrey'])
+    # Get the colormap colors
+    graycmp = cmap(np.arange(cmap.N))
+    # Set alpha (transparency)
+    graycmp[:,-1] = np.linspace(0, alpha-0.2, cmap.N)
+    c3=graycmp.copy()
+    # Create new colormap
+    graycmp = ListedColormap(graycmp)
+    
     #cell group cmap
     cmap = plt.cm.get_cmap(group_cmap, ncols)
     if clist == None:
@@ -185,7 +210,7 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
         color_group=pd.Series(list(G.nodes))
         i=0
         for k in list(cell_group.keys()):
-            color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+            color_group[[nichesphere.tl.cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
             i=i+1
         
     ## Edge thickness
@@ -249,6 +274,16 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
     
     inter=pd.Series(np.abs(pd.Series(list(weights))))
     inter.index=edgeCols.index
+
+    ####### NEW #######
+    if group!=None:
+        edgeCols[[nichesphere.tl.cellCatContained(pair=[x.split('->')[0], x.split('->')[0]], 
+                   cellCat=group)==False for x in edgeCols.index]]='lightgray'
+        orange_edges = [(u,v) for u,v in G.edges if edgeCols[u+'->'+v] == 'orange']
+        blue_edges = [(u,v) for u,v in G.edges if edgeCols[u+'->'+v] == 'lightblue']
+        gray_edges = [(u,v) for u,v in G.edges if edgeCols[u+'->'+v] == 'lightgray']
+    ###################
+    
     ###
     
     if nodeSize == 'betweeness':
@@ -278,7 +313,13 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
 
 
         nx.draw_networkx_nodes(G,pos,node_color=color_group,ax=ax1)
-
+    
+    ##########################################
+    if group!=None:
+        nx.draw_networkx_edges(gCol,pos=pos,edge_color=inter[edgeCols=='lightgray'],
+            connectionstyle="arc3,rad=0.15", arrowstyle='<->',
+            width=inter[edgeCols=='lightgray']*edge_scale,ax=ax1, edgelist=gray_edges, edge_cmap=graycmp, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
+    ##########################################
     nx.draw_networkx_edges(G,pos=pos_edges,edge_color=inter[edgeCols=='lightblue'],
             connectionstyle="arc3,rad=0.15",
             width=inter[edgeCols=='lightblue']*edge_scale,ax=ax1, edgelist=blue_edges, edge_cmap=cmap3,edge_vmin=-1*np.max(inter), 
@@ -287,7 +328,6 @@ def catNW(x_chem,colocNW, cell_group, group_cmap='tab20', ncols=20, color_group=
             connectionstyle="arc3,rad=0.15",
             width=inter[edgeCols=='orange']*edge_scale,ax=ax1, edgelist=orange_edges, edge_cmap=cmap4,edge_vmin=-1*np.max(inter), 
             edge_vmax=np.max(inter), arrowsize=20)
-    
     nx.draw_networkx_labels(G,pos_attrs,verticalalignment='bottom',
         font_size=12,clip_on=False,ax=ax1, font_weight='bold')
     f.suptitle(plot_title)

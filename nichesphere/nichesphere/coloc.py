@@ -317,7 +317,7 @@ def colocNW(x_diff,adj, cell_group, group=None, group_cmap='tab20', ncols=20, cl
             nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', lab_spacing=9, thr=0, alpha=1, fsize=(8,8), pos=None, 
             edge_scale=1):
     """ (Differential) co-localization network
-    
+
     Parameters
     ----------
     xdiff : pd.DataFrame
@@ -403,7 +403,7 @@ def colocNW(x_diff,adj, cell_group, group=None, group_cmap='tab20', ncols=20, cl
     color_group=pd.Series(list(gCol.nodes))
     i=0
     for k in list(cell_group.keys()):
-        color_group[[nichesphere.tl.cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+        color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
         i=i+1
 
     ### different layouts
@@ -451,7 +451,7 @@ def colocNW(x_diff,adj, cell_group, group=None, group_cmap='tab20', ncols=20, cl
 
     #classify edges by color
     if group!=None:
-        edgeCols[[nichesphere.tl.cellCatContained(pair=[x.split('->')[0], x.split('->')[0]], 
+        edgeCols[[cellCatContained(pair=[x.split('->')[0], x.split('->')[0]], 
                    cellCat=group)==False for x in edgeCols.index]]='lightgray'
         orange_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'orange']
         blue_edges = [(u,v) for u,v in gCol.edges if edgeCols[u+'->'+v] == 'lightblue']

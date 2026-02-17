@@ -316,7 +316,7 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
     
     ##########################################
     if group!=None:
-        nx.draw_networkx_edges(gCol,pos=pos,edge_color=inter[edgeCols=='lightgray'],
+        nx.draw_networkx_edges(G,pos=pos,edge_color=inter[edgeCols=='lightgray'],
             connectionstyle="arc3,rad=0.15", arrowstyle='<->',
             width=inter[edgeCols=='lightgray']*edge_scale,ax=ax1, edgelist=gray_edges, edge_cmap=graycmp, edge_vmin=-1*np.max(inter), edge_vmax=np.max(inter))
     ##########################################

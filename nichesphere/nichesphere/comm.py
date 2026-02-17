@@ -210,7 +210,7 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
         color_group=pd.Series(list(G.nodes))
         i=0
         for k in list(cell_group.keys()):
-            color_group[[nichesphere.tl.cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+            color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
             i=i+1
         
     ## Edge thickness
@@ -277,7 +277,7 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
 
     ####### NEW #######
     if group!=None:
-        edgeCols[[nichesphere.tl.cellCatContained(pair=[x.split('->')[0], x.split('->')[0]], 
+        edgeCols[[cellCatContained(pair=[x.split('->')[0], x.split('->')[0]], 
                    cellCat=group)==False for x in edgeCols.index]]='lightgray'
         orange_edges = [(u,v) for u,v in G.edges if edgeCols[u+'->'+v] == 'orange']
         blue_edges = [(u,v) for u,v in G.edges if edgeCols[u+'->'+v] == 'lightblue']

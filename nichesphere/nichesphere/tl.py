@@ -79,8 +79,17 @@ def cells_niche_colors(CTs, niche_colors, niche_dict):
     niche_df.niche=niche_df.niche.astype('category')
     return niche_df
 #%%
-"""My unique func without value reordering"""
 def unique(array):
+    """get unique elements in array without re-sorting
+
+    Parameters
+    ----------
+    array : np.array
+
+    Returns
+    -------
+    uniq[index.argsort()] : np.array of unique elements of the original array in original order
+    """
     uniq, index = np.unique(array, return_index=True)
     return uniq[index.argsort()]
 
@@ -88,6 +97,22 @@ def unique(array):
 def pval_filtered_HMdf(testDF, oneCTinteractions, p, cell_types):
     """ Get dataframe for scores heatmap from dataframe obtained from diffColoc_test()
     
+    Parameters
+    ----------
+    testDF : pd.DataFrame
+        dataframe with cell pairs as indexes and columns 'statistic' and 'p-value'
+        (often resulting from diffColoc_test())
+    oneCTinteractions : list
+        list of single cell interactions (celltype-celltype)
+    p : float
+        threshold p-value to filter
+    cell_types : pd.Series or list
+        list/series of cell types
+    
+    Returns
+    -------
+    testHM : pd.DataFrame
+        Dataframe of cell types x cell types with significant 'statistic' values
     """
     testHM=testDF.statistic.copy()
     testHM[testDF['p-value']>p]=0
@@ -101,16 +126,24 @@ def pval_filtered_HMdf(testDF, oneCTinteractions, p, cell_types):
     return testHM
 #%%
 
-def PIC_BGdoubletsOEratios(adata_singlets):
-    #nmults = Number of multiplets
-    #annot = singlets annotation (character vector)
-    #singIDs = singlets IDs (character vector)
+def PIC_BGdoubletsOEratios(adata_singlets, annot_col):
+    """Generate distribution of O/E ratios for colocalization probabilities of cell type pairs in randomly generated doublets (background dist)
+    for tests in PIC-seq data
     
-    ### test diff coloc for PICseq=> 
+    Parameters
+    ----------
+    adata_singlets : AnnData
+        anndata object containing singlets (scRNA-seq) data
+    annot_col : str
+        name of the cell type annotation column in the anndata object obs
 
-    ## Generate distribution of O/E ratios for colocalization prob of cell type pairs in randomly generated doublets (background dist)
-    
-    rdf=pd.DataFrame(adata_singlets.obs.annotation)
+    Returns
+    -------
+    OEratios : pd.Series
+        distribution of O/E ratios for colocalization probabilities of cell type pairs in randomly generated doublets
+    """
+        
+    rdf=pd.DataFrame(adata_singlets.obs[annot_col])
     rdf.columns=['annot']
     rdf.index=adata_singlets.obs.index
     rdf['pair']=''
@@ -140,23 +173,32 @@ def PIC_BGdoubletsOEratios(adata_singlets):
     OEratios=pairProbsO/pairProbs['count'][pairProbsO.index]
     return OEratios
 
-def PIC_OEratios_BGdist(adata_singlets, nreps=10):
-    test=[]
-    i=1
-    for i in range(nreps):
-        random.seed(i)
-        test=test+list(PIC_BGdoubletsOEratios(adata_singlets=adata_singlets[adata_singlets.obs.stage=='TPO']))
-        i=i+1
-    return test
-
 
 #%%
 def getExpectedColocProbsFromSCs(sc_adata, sample, cell_types, sc_data_sampleCol, sc_adata_annotationCol):
-    ## cell_types=cell types list
-    ## sc_adata=sc gene expression anndata
-    ## sample=name of sample in turn
-    ## sc_data_sampleCol=name of the sc_adata.obs column containing sample names to which cells belong
-    ## sc_adata_annotationCol=name of the sc_adata.obs column containing cell types of each cell
+    """Compute the expected probability of each cell type pair to occur in a specific condition by multiplying cell type proportions from 
+    the single cell data
+
+    Parameters
+    ----------
+    sc_adata : AnnData
+        anndata object containing singlets (scRNA-seq) data
+    sample : str
+        name of the sample/condition to be tested
+    cell_types : pd.Series or list
+        list/series of cell types 
+    sc_data_sampleCol : str
+        name of the column in the obs of the anndata object where the sample/condition is indicated 
+    sc_adata_annotationCol : str
+        name of the cell type column in the obs of the anndata object
+
+    Returns
+    -------
+    scCTpairsProbs : pd.DataFrame
+        Dataframe of expected co-localization probabilities per cell type pair.
+        Cell type pairs as indexes and a 'count' column
+    """
+    
     scCTprops=sc_adata.obs[sc_adata_annotationCol][sc_adata.obs[sc_data_sampleCol]==sample].value_counts()[cell_types]/sc_adata.obs[sc_adata_annotationCol][sc_adata.obs[sc_data_sampleCol]==sample].value_counts().sum()
     scCTpairsProbs=pd.DataFrame()
     
@@ -201,6 +243,17 @@ def get_pairCatDFdir(niches_df):
 #%%
 
 def processCTKRoutput(ctkrTbl):
+    """Remove suffixes '|L' , '|R' and '|TF' from cell - cell communication (CrossTalkeR) tables
+
+    Parameters
+    ----------
+    ctkrTbl : pd.DataFrame
+        Codition specific cell - cell communication table (output from CrossTalkeR)
+    Returns
+    -------
+    ctkrTbl : pd.DataFrame
+        Same cell - cell communication table without the suffixes mentioned above
+    """
     ctkrTbl['gene_A']=ctkrTbl['gene_A'].str.replace('|L', '')
     ctkrTbl['gene_A']=ctkrTbl['gene_A'].str.replace('|R', '')
     ctkrTbl['gene_B']=ctkrTbl['gene_B'].str.replace('|R', '')
@@ -213,6 +266,23 @@ def processCTKRoutput(ctkrTbl):
 
 #%%
 def getColocFilter(pairCatDF, adj, oneCTints):
+    """Get filtering object indicating which cell pairs are differentially co-localized
+
+    Parameters
+    ----------
+    pairCatDF : pd.DataFrame
+        dataframe of cell pairs and corresponding niche pairs
+    adj : pd.DataFrame
+        cell types x cell types adjacency matrix (calculated from the cell cell 
+        interaction scores)
+    oneCTinteractions : list
+        list of single cell interactions (celltype->celltype)
+    Returns
+    -------
+    colocFilt : pd.DataFrame
+        Dataframe with cell type pairs in the form 'celltype->celltype' as index and a 'filter' column indicating which cell pairs 
+        are differentially co-localized with a 1 (or 0 if they are not)
+    """
     colocFilt=pd.DataFrame(pairCatDF.cell_pairs, columns=['cell_pairs'], 
                        index=pairCatDF.cell_pairs)
     colocFilt['filter']=0
@@ -227,6 +297,31 @@ def getColocFilter(pairCatDF, adj, oneCTints):
 
 #%%
 def assign_properties(g, communities, colors, pos=None, node_coord_sf=200, simmilarity_weights=False, g_unsigned=None, alpha=1):
+    """Assign properties to network g to visualize with gravis interactive networks
+
+    Parameters
+    ----------
+    g : nx.Graph
+        Graph object with cell cell interaction scores as weights
+    communities : list of sets 
+        cell type communities
+    colors : list
+        list of colors (one per community)
+    pos : dict (default: None)
+        dictionary of node positions in a layout. Keys are cell types and values are arrays of x,y coordinates
+    node_coord_sf : int (default: 200)
+        node coordinate scale factor to adapt to gravis
+    simmilarity_weights : bool (default: False)
+        whether or not to have the simmilarity based weights (from the unsigned network)
+    g_unsigned : nx.Graph (default: None)
+        Unsigned network generated directly from the adjacency matrix derived from the differential co-localization scores 
+        (with nx.from_pandas_adjacency)
+    alpha : float (default: 1)
+        edge transparency parameter (from 0 to 1)
+    Returns
+    -------
+    
+    """
     
     ## Create color map for gravis interactive network (to move nodes around and change label sizes)
     alpha=alpha

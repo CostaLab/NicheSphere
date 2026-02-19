@@ -320,7 +320,11 @@ def assign_properties(g, communities, colors, pos=None, node_coord_sf=200, simmi
         edge transparency parameter (from 0 to 1)
     Returns
     -------
-    
+    g : nx.Graph
+        Graph object with cell cell interaction scores as weights and added properties 
+        (different options for node size scaling, like 'size_betweeness', 'size_pagerank' and 'size_pagerank_uw', node shape, color, x and y coordinates, 
+        options for edge weights, like 'weight_signed' (from co-localization/communication statistical test), 'weight_abs' (absolute values without signs), 'weight_exp' (exponentially scaled) and 'weight_simmilarity',
+        edge color and size). Edges and nodes visualization options can be managed interactively with th gravis library
     """
     
     ## Create color map for gravis interactive network (to move nodes around and change label sizes)

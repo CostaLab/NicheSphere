@@ -248,7 +248,7 @@ def processCTKRoutput(ctkrTbl):
     Parameters
     ----------
     ctkrTbl : pd.DataFrame
-        Codition specific cell - cell communication table (output from CrossTalkeR)
+        Condition specific cell - cell communication table (output from CrossTalkeR)
     Returns
     -------
     ctkrTbl : pd.DataFrame
@@ -275,7 +275,7 @@ def getColocFilter(pairCatDF, adj, oneCTints):
     adj : pd.DataFrame
         cell types x cell types adjacency matrix (calculated from the cell cell 
         interaction scores)
-    oneCTinteractions : list
+    oneCTints : list
         list of single cell interactions (celltype->celltype)
     Returns
     -------

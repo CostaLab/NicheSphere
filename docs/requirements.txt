@@ -1,0 +1,13 @@
+myst-parser
+nbsphinx
+sphinx_rtd_theme
+sphinx
+
+pandas
+scipy
+seaborn
+matplotlib
+networkx
+POT
+scikit-learn
+scanpy[leiden]

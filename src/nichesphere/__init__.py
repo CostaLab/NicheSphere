@@ -1,0 +1,8 @@
+__version__ = "1.0.0"
+__author__ = 'Mayra Ruiz, James Nagai'
+__credits__ = 'Institute for Computational Genomics'
+
+from . import tl
+from . import coloc
+from . import comm
+#from . import pl

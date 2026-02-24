@@ -1,17 +1,14 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
 name: Python package
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "doc" ] # Added "doc" so you can see if it works before merging!
   pull_request:
     branches: [ "main" ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -20,22 +17,27 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5 # Updated to v5 (current best practice)
       with:
         python-version: ${{ matrix.python-version }}
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
-        python -m pip install git+https://github.com/jsnagai/Nichesphere#subdirectory=nichesphere
-        if [ -f nichesphere/requirements.txt ]; then pip install -r nichesphere/requirements.txt; fi
+        # IMPORTANT: This installs YOUR local code from the current branch
+        pip install -e . 
+        # Check if requirements exist in the new root or docs folder
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
     - name: Test with pytest
       run: |
-        pytest
+        # This tells pytest to look in your new root tests/ folder
+        pytest tests/

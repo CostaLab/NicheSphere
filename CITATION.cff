@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Ruiz"
+  given-names: "Mayra"
+- family-names: "Nagai"
+  given-names: "James"
+title: "NicheSphere"
+version: 1.0.0
+doi: 10.5281/zenodo.XXXXX  # Update this AFTER you get your DOI from Zenodo
+date-released: 2026-02-24  # Use today's date
+url: "https://github.com/CostaLab/NicheSphere"

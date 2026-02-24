@@ -8,6 +8,6 @@ NicheSphere is an sc-verse compatible Python library which allows the user to fi
 
 It also offers the possibility to look at biological process based differential communication between cell type pairs or differential co-localization domains based on Ligand-Receptor pairs expression data, which can be obtained from diverse cell cell communication tools, such as [CrossTalkeR](https://costalab.github.io/CrossTalkeR/).
 
-You can find our documentation and an application example on the Myocardial Infarction atlas data from Kuppe et. al. 2022 here: https://nichesphere.readthedocs.io/en/latest/ 
+You can find our documentation and an application example on the Myocardial Infarction atlas data from Kuppe et. al. 2022 here: https://nichesphere.readthedocs.io/en/latest/ , The data you'll need to run the tutorials is stored in [Zenodo](https://doi.org/10.5281/zenodo.15790389)
 
 

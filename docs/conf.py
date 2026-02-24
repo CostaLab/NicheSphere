@@ -16,9 +16,9 @@ sys.path.insert(0, os.path.abspath('../src'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'NicheSphere'
-copyright = '2025, Mayra Ruiz'
-author = 'Mayra Ruiz'
-release = '0.1.0'
+copyright = '2025, Mayra Ruiz, James Nagai'
+author = 'Mayra Ruiz, James Nagai'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

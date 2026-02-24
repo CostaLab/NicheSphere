@@ -1,6 +1,6 @@
 [project]
 name = "NicheSphere"
-version = "1.0.2"
+version = "1.1.0-dev"
 description = "NicheSphere is an sc-verse compatible Python library which allows the user to find differential co-localization domains / niches based on cell type pair co-localization probabilities in different conditions. It also offers the possibility to look at biological process based differential communication between cell type pairs or differential co-localization domains based on Ligand-Receptor pairs expression data, which can be obtained from diverse cell cell communication tools"
 authors = [
     { name = "MayraRuizT", email = "aryam950812@gmail.com"},

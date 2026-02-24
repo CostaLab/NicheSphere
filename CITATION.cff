@@ -7,6 +7,6 @@ authors:
   given-names: "James"
 title: "NicheSphere"
 version: 1.0.0
-doi: 10.5281/zenodo.XXXXX  # Update this AFTER you get your DOI from Zenodo
-date-released: 2026-02-24  # Use today's date
+doi: 10.5281/zenodo.1875671
+date-released: 2026-02-24
 url: "https://github.com/CostaLab/NicheSphere"

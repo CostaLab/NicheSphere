@@ -3,6 +3,8 @@
 # NicheSphere
 
 [![DOI](https://zenodo.org/badge/685916590.svg)](https://doi.org/10.5281/zenodo.18756710)
+![PyPI - Version](https://img.shields.io/pypi/v/NicheSphere)
+
 
 NicheSphere is an sc-verse compatible Python library which allows the user to find differential co-localization domains / niches based on cell type pair co-localization probabilities in different conditions. Cell type pair co-localization probabilities can be obtained in different ways, for example, through deconvolution of spatial transcriptomics / PIC-seq data (getting the probabilities of finding each cell type in each spot / multiplet) ; or counting nearest neighbors of each type for each cell in single cell spatial data like MERFISH or CODEX.
 

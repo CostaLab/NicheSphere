@@ -7,7 +7,7 @@ Before installing, ensure you have the following:
 
 * Python > = 3.10 < = 3.12
 * pip (Python package manager)
-* pygraphviz . You can install it running this command in your terminal:
+* pygraphviz . We recommend installing it via conda:
 
 
 .. code-block:: bash
@@ -15,10 +15,19 @@ Before installing, ensure you have the following:
     conda install --channel conda-forge pygraphviz
 
 
-From GitHub
------------
-To install NicheSphere, run this command in your terminal:
+Standard Installation
+---------------------
+The easiest way to install **NicheSphere** is directly from `PyPI <https://pypi.org>`_:
 
 .. code-block:: bash
 
-    pip install git+https://github.com/CostaLab/Nichesphere#subdirectory=nichesphere
+    pip install NicheSphere
+
+
+From GitHub (Development Version)
+-----------
+If you want to install the latest development version from the source:
+
+.. code-block:: bash
+
+    pip install git+https://github.com/CostaLab/NicheSphere@dev

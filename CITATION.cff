@@ -6,7 +6,7 @@ authors:
 - family-names: "Nagai"
   given-names: "James"
 title: "NicheSphere"
-version: 1.0.0
+version: 1.0.2
 doi: 10.5281/zenodo.1875671
 date-released: 2026-02-24
 url: "https://github.com/CostaLab/NicheSphere"

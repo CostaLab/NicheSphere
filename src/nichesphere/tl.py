@@ -6,6 +6,13 @@ import itertools
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import networkx as nx
+import scanpy as sc
+
+from joblib import Parallel, delayed
+import time
+from collections import Counter
+from sklearn.neighbors import NearestNeighbors
+from scipy.sparse import csr_matrix
 
 
 def get_spot_ct_props(spot_cell_props, sc_ct):
@@ -73,8 +80,8 @@ def cells_niche_colors(CTs, niche_colors, niche_dict):
     niche_df['niche']=niche_colors.index[0]
     niche_df['color']=niche_colors[0]
     for key in list(niche_dict.keys()):
-        niche_df['niche'][[c in niche_dict[key] for c in niche_df.cell]]=key
-        niche_df['color'][niche_df['niche']==key]=niche_colors[key]
+        niche_df.loc[[c in niche_dict[key] for c in niche_df.cell], 'niche']=key
+        niche_df.loc[niche_df['niche']==key, 'color']=niche_colors[key]
     niche_df.index=niche_df.cell
     niche_df.niche=niche_df.niche.astype('category')
     return niche_df
@@ -151,7 +158,7 @@ def PIC_BGdoubletsOEratios(adata_singlets, annot_col):
     ## Get random singlets pairs
     pairNums=[i for i in range(int(np.round(adata_singlets.obs.shape[0]//2))) for _ in range(2)]
     pairNumsIdx=random.sample(list(adata_singlets.obs.index), len(pairNums))
-    rdf.pair[pairNumsIdx]=pairNums
+    rdf.loc[pairNumsIdx, 'pair']=pairNums
 
     pairCounts=[rdf.annot[rdf.pair==i][0]+'-'+rdf.annot[rdf.pair==i][1] for i in rdf.pair.value_counts().index[rdf.pair.value_counts()==2]]
     
@@ -175,40 +182,421 @@ def PIC_BGdoubletsOEratios(adata_singlets, annot_col):
 
 
 #%%
-def getExpectedColocProbsFromSCs(sc_adata, sample, cell_types, sc_data_sampleCol, sc_adata_annotationCol):
-    """Compute the expected probability of each cell type pair to occur in a specific condition by multiplying cell type proportions from 
-    the single cell data
+
+def downsample_class(data, target_class, factor=6):
+    """Reduce the number of elements belonging to ``target_class`` by a given factor.
+
+    Useful when certain cell types are over-represented in the gated singlets data relative
+    to their true in-tissue proportions, before building a background doublet distribution.
 
     Parameters
     ----------
-    sc_adata : AnnData
-        anndata object containing singlets (scRNA-seq) data
-    sample : str
-        name of the sample/condition to be tested
+    data : list
+        Full list of cell type labels (one entry per cell).
+    target_class : list
+        Cell types to downsample.
+    factor : int, default 6
+        Reduction factor; the number of target-class elements is divided by this value.
+
+    Returns
+    -------
+    list
+        Combined list of non-target elements plus the downsampled target elements,
+        in their original relative order.
+    """
+    target_elements = [x for x in data if x in target_class]
+    other_elements = [x for x in data if x not in target_class]
+    keep_count = len(target_elements) // factor
+    return other_elements + target_elements[:keep_count]
+
+#%%
+
+def PIC_BGdoubletsOEratios_parallel(seed, adata, annot_col, target_pairs,
+                                     downsample_cells=False, cell_list_downsample=None,
+                                     downsampling_factor=6, pseudocount=1e-10):
+    
+    """Generate one set of O/E ratios for cell type pair co-localization probabilities from
+    randomly paired single cells.  Running this function *n* times (e.g. via
+    ``get_PIC_BG_OEratios_DF``) builds a per-pair empirical background distribution that
+    can be used for significance testing in PIC-seq data or single-sample datasets.
+
+    Parameters
+    ----------
+    seed : int
+        Random seed for reproducibility.
+    adata : AnnData
+        Singlets (scRNA-seq) anndata object.
+    annot_col : str
+        Name of the cell type annotation column in ``adata.obs``.
+    target_pairs : list or pd.Index
+        Cell type pairs to evaluate (e.g. ``colocPerSample.columns``).
+    downsample_cells : bool, default False
+        Whether to downsample over-represented cell types before pairing.
+        Useful when the gated singlets data does not reflect true in-tissue proportions.
+    cell_list_downsample : list or None, default None
+        Cell types to downsample (used only when ``downsample_cells=True``).
+    downsampling_factor : int, default 6
+        Reduction factor passed to :func:`downsample_class`
+        (used only when ``downsample_cells=True``).
+    pseudocount : float, default 1e-10
+        Small value added to observed and expected counts before division to avoid
+        division-by-zero or log(0) in downstream steps.
+
+    Returns
+    -------
+    oe_ratios : pd.Series
+        O/E ratios for each pair in ``target_pairs``, indexed by pair name.
+    """
+    if cell_list_downsample is None:
+        cell_list_downsample = []
+
+    random.seed(seed)
+    my_list = list(adata.obs[annot_col])
+    random.shuffle(my_list)
+
+    if downsample_cells:
+        my_list = downsample_class(my_list, target_class=cell_list_downsample,
+                                   factor=downsampling_factor)
+
+    it = iter(my_list)
+    observed_pairs = [f"{a}-{b}" for a, b in zip(it, it)]
+
+    obs_counts = Counter(observed_pairs)
+    total_gen = len(observed_pairs)
+
+    item_counts = Counter(my_list)
+    n = len(my_list)
+
+    def calculate_ratio(pair_str):
+        try:
+            a, b = pair_str.split('-')
+            p_a = item_counts[a] / n
+            p_b = (item_counts[b] - (1 if a == b else 0)) / (n - 1)
+            expected = p_a * p_b * total_gen
+            observed = obs_counts.get(pair_str, 0)
+            return (observed + pseudocount) / (expected + pseudocount)
+        except Exception:
+            return 0.0
+
+    oe_ratios = pd.Series(
+        {pair: calculate_ratio(pair) for pair in target_pairs},
+        name="OE_Ratio"
+    )
+    return oe_ratios
+#%%
+
+def get_PIC_BG_OEratios_DF(adata, annot_col, target_pairs, nreps=1000, njobs=10,
+                            downsample_cells=False, cell_list_downsample=None,
+                            downsampling_factor=6, pseudocount=1e-10):
+    """Generate *nreps* sets of O/E ratios for cell type pair co-localization probabilities
+    by running :func:`PIC_BGdoubletsOEratios_parallel` in parallel.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Singlets (scRNA-seq) anndata object.
+    annot_col : str
+        Name of the cell type annotation column in ``adata.obs``.
+    target_pairs : list or pd.Index
+        Cell type pairs to evaluate.
+    nreps : int, default 1000
+        Number of random background iterations.
+    njobs : int, default 10
+        Number of parallel jobs (passed to ``joblib.Parallel``).
+    downsample_cells : bool, default False
+        Downsample over-represented cell types before pairing (see
+        :func:`downsample_class`).
+    cell_list_downsample : list or None, default None
+        Cell types to downsample (used only when ``downsample_cells=True``).
+    downsampling_factor : int, default 6
+        Reduction factor for downsampling.
+    pseudocount : float, default 1e-10
+        Pseudocount passed to :func:`PIC_BGdoubletsOEratios_parallel`.
+
+    Returns
+    -------
+    df : pd.DataFrame
+        DataFrame of shape (*nreps*, n_pairs); each row is one set of O/E ratios and
+        each column corresponds to a cell type pair.
+    """
+    if cell_list_downsample is None:
+        cell_list_downsample = []
+
+    t = time.time()
+    res = Parallel(n_jobs=njobs)(
+        delayed(PIC_BGdoubletsOEratios_parallel)(
+            seed=i, adata=adata, annot_col=annot_col, target_pairs=target_pairs,
+            downsample_cells=downsample_cells,
+            cell_list_downsample=cell_list_downsample,
+            downsampling_factor=downsampling_factor,
+            pseudocount=pseudocount
+        )
+        for i in range(nreps)
+    )
+    df = pd.concat(res, axis=1).T
+    print(time.time() - t)
+    return df
+# %%
+
+def get_spatial_radius_BG_OEratios_DF_old(adata, cluster_col, radius=40.0, n_permutations=1000):
+    
+    """
+    Generate a null distribution of co-localization probabilities by label permutation.
+
+    The spatial graph is built once and held fixed. Cell type labels are then
+    randomly shuffled ``n_permutations`` times, and the radius-based co-localization
+    matrix is recomputed for each permutation. The resulting distribution can be used
+    to test whether observed co-localization probabilities deviate significantly from
+    what is expected under spatial randomness (see ``nichesphere.coloc.OvsE_coloc_test_adjPval``).
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Spatial AnnData object. Must contain cell centroid coordinates in
+        ``adata.obsm['spatial']`` and a categorical cluster annotation column in
+        ``adata.obs``.
+    cluster_col : str
+        Name of the categorical column in ``adata.obs`` containing cluster labels.
+    radius : float, default 40.0
+        Spatial radius used to define the neighborhood graph. Should match the
+        radius used in ``compute_radius_colocalization_matrix``.
+    n_permutations : int, default 1000
+        Number of label-permutation replicates to generate.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of shape (n_permutations, n_clusters²) containing the
+        null co-localization probabilities. Columns are named ``'{CT1}-{CT2}'``
+        for all cluster pairs (including same-cluster pairs), following the
+        convention expected by ``nichesphere.coloc.OvsE_coloc_test_adjPval``.
+        Rows correspond to individual permutation replicates.
+
+    Notes
+    -----
+    The spatial adjacency graph is computed once before permutation, so
+    runtime scales with ``n_permutations`` rather than re-fitting the
+    neighbor index each time.
+
+    Examples
+    --------
+    >>> bg_df = nichesphere.tl.get_spatial_radius_BG_OEratios_DF(
+    ...     adata, cluster_col='cell_type', radius=300.0, n_permutations=1000
+    ... )
+    >>> OvsE_df, stats = nichesphere.coloc.OvsE_coloc_test_adjPval(
+    ...     observedColocProbs=coloc.stack(),
+    ...     expectedColocProbs=bg_df.mean(),
+    ...     testDistribution_df=bg_df,
+    ...     ...
+    ... )
+    """
+
+    coords = adata.obsm['spatial']
+    # 1. Pre-calculate the neighbors to save time during shuffling
+    nbrs = NearestNeighbors(radius=radius, algorithm='kd_tree').fit(coords)
+    adj_list = nbrs.radius_neighbors(coords, return_distance=False)
+
+    categories = adata.obs[cluster_col].cat.categories
+    n_clusters = len(categories)
+    cluster_to_idx = {cat: i for i, cat in enumerate(categories)}
+    
+    # Store results for each permutation
+    null_distributions = []
+
+    print(f"Generating {n_permutations} permutations...")
+    for _ in range(n_permutations):
+        # 2. Shuffle the labels
+        shuffled_labels = adata.obs[cluster_col].sample(frac=1).values
+        
+        # 3. Compute interactions on the shuffled graph
+        mat = np.zeros((n_clusters, n_clusters))
+        for i, neighbors in enumerate(adj_list):
+            row = cluster_to_idx[shuffled_labels[i]]
+            for nb in neighbors:
+                if i == nb: continue
+                col = cluster_to_idx[shuffled_labels[nb]]
+                mat[row, col] += 1
+        
+        # Symmetrize and normalize as in the observed calculation
+        mat = (mat + mat.T) / 2
+        if mat.sum() > 0:
+            mat = mat / mat.sum()
+            
+        # Flatten to a Series where index is 'CT1_CT2' to match your OvsE function
+        flat_probs = []
+        for i, ct1 in enumerate(categories):
+            for j, ct2 in enumerate(categories):
+                flat_probs.append(mat[i, j])
+        
+        null_distributions.append(flat_probs)
+
+    # Create the testDistribution_df (rows = permutations, columns = cell type pairs)
+    colnames = [f"{c1}-{c2}" for c1 in categories for c2 in categories]
+    return pd.DataFrame(null_distributions, columns=colnames)
+
+# %%
+
+def get_spatial_radius_BG_OEratios_DF(adata, cluster_col, radius=40.0, n_permutations=1000):
+    """
+    Optimized version of get_spatial_radius_BG_OEratios_DF using sparse matrix multiplication.
+    
+    Generate a null distribution of co-localization probabilities by label permutation.
+
+    The spatial graph is built once and held fixed. Cell type labels are then
+    randomly shuffled ``n_permutations`` times, and the radius-based co-localization
+    matrix is recomputed for each permutation. The resulting distribution can be used
+    to test whether observed co-localization probabilities deviate significantly from
+    what is expected under spatial randomness (see ``nichesphere.coloc.OvsE_coloc_test_adjPval``).
+
+    Parameters
+    ----------
+    adata : anndata.AnnData
+        Spatial AnnData object. Must contain cell centroid coordinates in
+        ``adata.obsm['spatial']`` and a categorical cluster annotation column in
+        ``adata.obs``.
+    cluster_col : str
+        Name of the categorical column in ``adata.obs`` containing cluster labels.
+    radius : float, default 40.0
+        Spatial radius used to define the neighborhood graph. Should match the
+        radius used in ``compute_radius_colocalization_matrix``.
+    n_permutations : int, default 1000
+        Number of label-permutation replicates to generate.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of shape (n_permutations, n_clusters²) containing the
+        null co-localization probabilities. Columns are named ``'{CT1}-{CT2}'``
+        for all cluster pairs (including same-cluster pairs), following the
+        convention expected by ``nichesphere.coloc.OvsE_coloc_test_adjPval``.
+        Rows correspond to individual permutation replicates.
+
+    Notes
+    -----
+    The spatial adjacency graph is computed once before permutation, so
+    runtime scales with ``n_permutations`` rather than re-fitting the
+    neighbor index each time.
+
+    Examples
+    --------
+    >>> bg_df = nichesphere.tl.get_spatial_radius_BG_OEratios_DF(
+    ...     adata, cluster_col='cell_type', radius=300.0, n_permutations=1000
+    ... )
+    >>> OvsE_df, stats = nichesphere.coloc.OvsE_coloc_test_adjPval(
+    ...     observedColocProbs=coloc.stack(),
+    ...     expectedColocProbs=bg_df.mean(),
+    ...     testDistribution_df=bg_df,
+    ...     ...
+    ... )
+    """
+    coords = adata.obsm['spatial']
+    
+    nbrs = NearestNeighbors(radius=radius, algorithm='kd_tree').fit(coords)
+    adj_list = nbrs.radius_neighbors(coords, return_distance=False)
+
+    n_cells = coords.shape[0]
+    indptr = [0]
+    indices = []
+    for neighbors in adj_list:
+        indices.extend(neighbors)
+        indptr.append(len(indices))
+    
+    data = np.ones(len(indices), dtype=np.float32)
+    A = csr_matrix((data, indices, indptr), shape=(n_cells, n_cells))
+    
+    A.setdiag(0)
+    A.eliminate_zeros()
+
+    cluster_labels = adata.obs[cluster_col].astype('category')
+    categories = cluster_labels.cat.categories
+    n_clusters = len(categories)
+    numeric_labels = cluster_labels.cat.codes.values
+
+    Y = np.zeros((n_cells, n_clusters), dtype=np.float32)
+    Y[np.arange(n_cells), numeric_labels] = 1.0
+    Y_sparse = csr_matrix(Y)
+
+    null_distributions = []
+    print(f"Generating {n_permutations} permutations (Vectorized)...")
+
+    for _ in range(n_permutations):
+        shuffled_labels = np.random.permutation(numeric_labels)
+        
+        Y_shuff = np.zeros((n_cells, n_clusters), dtype=np.float32)
+        Y_shuff[np.arange(n_cells), shuffled_labels] = 1.0
+        Y_shuff_sparse = csr_matrix(Y_shuff)
+
+        mat = (Y_shuff_sparse.T @ A @ Y_shuff_sparse).toarray()
+        
+        mat = (mat + mat.T) / 2.0
+        total_sum = mat.sum()
+        if total_sum > 0:
+            mat = mat / total_sum
+            
+        null_distributions.append(mat.flatten())
+    colnames = [f"{c1}-{c2}" for c1 in categories for c2 in categories]
+    return pd.DataFrame(null_distributions, columns=colnames)
+
+# %%
+
+def getExpectedColocProbsFromSCs(cell_types, sc_adata=None, sample=None,
+                                  sc_data_sampleCol=None, sc_adata_annotationCol=None,
+                                  annot_series=None):
+    """Compute the expected co-localization probability of each cell type pair by multiplying
+    cell type proportions derived from single-cell (singlets) data.
+
+    Two calling modes are supported:
+
+    * **AnnData mode** – pass ``sc_adata``, ``sample``, ``sc_data_sampleCol``, and
+      ``sc_adata_annotationCol``.  The function extracts the annotation column for the
+      requested condition internally.
+    * **Series mode** – pass a pre-processed ``annot_series`` (e.g. after applying
+      :func:`downsample_class`).  This is useful when cell type frequencies need to be
+      adjusted before computing expected probabilities.
+
+    Parameters
+    ----------
     cell_types : pd.Series or list
-        list/series of cell types 
-    sc_data_sampleCol : str
-        name of the column in the obs of the anndata object where the sample/condition is indicated 
-    sc_adata_annotationCol : str
-        name of the cell type column in the obs of the anndata object
+        Ordered list of cell types (same order as the co-localization data columns).
+    sc_adata : AnnData or None, default None
+        Singlets anndata object (AnnData mode only).
+    sample : str or None, default None
+        Condition/sample name to subset ``sc_adata`` (AnnData mode only).
+    sc_data_sampleCol : str or None, default None
+        Column in ``sc_adata.obs`` indicating the condition (AnnData mode only).
+    sc_adata_annotationCol : str or None, default None
+        Column in ``sc_adata.obs`` containing cell type labels (AnnData mode only).
+    annot_series : pd.Series or None, default None
+        Pre-processed series of cell type labels, one entry per cell (Series mode only).
+        Takes precedence over AnnData mode when provided.
 
     Returns
     -------
     scCTpairsProbs : pd.DataFrame
-        Dataframe of expected co-localization probabilities per cell type pair.
-        Cell type pairs as indexes and a 'count' column
+        Expected co-localization probabilities per cell type pair.
+        Cell type pairs as index, single column named ``'count'``.
     """
-    
-    scCTprops=sc_adata.obs[sc_adata_annotationCol][sc_adata.obs[sc_data_sampleCol]==sample].value_counts()[cell_types]/sc_adata.obs[sc_adata_annotationCol][sc_adata.obs[sc_data_sampleCol]==sample].value_counts().sum()
-    scCTpairsProbs=pd.DataFrame()
-    
+    if annot_series is not None:
+        ann = annot_series
+    elif sc_adata is not None:
+        mask = sc_adata.obs[sc_data_sampleCol] == sample
+        ann = sc_adata.obs[sc_adata_annotationCol][mask]
+    else:
+        raise ValueError(
+            "Provide either 'sc_adata' (with sample/sc_data_sampleCol/sc_adata_annotationCol) "
+            "or 'annot_series'."
+        )
+
+    scCTprops = ann.value_counts()[cell_types] / ann.value_counts().sum()
+    scCTpairsProbs = pd.DataFrame()
+
     for x in scCTprops:
-        scCTpairsProbs=pd.concat([scCTpairsProbs, pd.DataFrame(x*scCTprops)])
-        
-    pci=[]
+        scCTpairsProbs = pd.concat([scCTpairsProbs, pd.DataFrame(x * scCTprops)])
+
+    pci = []
     for x in scCTprops.index:
-        pci.append((x+'-'+scCTprops.index.astype(str)).tolist())    
-    scCTpairsProbs.index=[item for sublist in pci for item in sublist]
+        pci.append((x + '-' + scCTprops.index.astype(str)).tolist())
+    scCTpairsProbs.index = [item for sublist in pci for item in sublist]
     return scCTpairsProbs
 #%%
     
@@ -234,10 +622,10 @@ def get_pairCatDFdir(niches_df):
     
     pairCatDFdir['niche_pairs']=''
     for clust in np.sort(niches_df.niche.unique()):
-        pairCatDFdir['niche_pairs'][[cellCatContained(pair=p, cellCat=niches_df.cell[niches_df.niche==clust]) for p in pairCatDFdir.cell_pairs]]=clust+'->'+clust
+        pairCatDFdir.loc[[cellCatContained(pair=p, cellCat=niches_df.cell[niches_df.niche==clust]) for p in pairCatDFdir.cell_pairs], 'niche_pairs']=clust+'->'+clust
 
     for comb in list(itertools.permutations(list(niches_df.niche.unique().sort_values()), 2)):
-        pairCatDFdir['niche_pairs'][[(p.split('->')[0] in niches_df.cell[niches_df.niche==comb[0]]) & (p.split('->')[1] in niches_df.cell[niches_df.niche==comb[1]]) for p in pairCatDFdir.cell_pairs]]=comb[0]+'->'+comb[1]
+        pairCatDFdir.loc[[(p.split('->')[0] in niches_df.cell[niches_df.niche==comb[0]]) & (p.split('->')[1] in niches_df.cell[niches_df.niche==comb[1]]) for p in pairCatDFdir.cell_pairs], 'niche_pairs']=comb[0]+'->'+comb[1]
 
     return pairCatDFdir
 #%%
@@ -288,10 +676,10 @@ def getColocFilter(pairCatDF, adj, oneCTints):
     colocFilt['filter']=0
 
     for i in pairCatDF.cell_pairs:
-        colocFilt['filter'][i]=adj.loc[i.split('->')[1],i.split('->')[0]]
+        colocFilt.loc[i, 'filter']=adj.loc[i.split('->')[1],i.split('->')[0]]
     
-    colocFilt['filter'][oneCTints]=1
-    colocFilt['filter'][colocFilt['filter']>0]=1
+    colocFilt.loc[oneCTints, 'filter']=1
+    colocFilt.loc[colocFilt['filter']>0, 'filter']=1
     colocFilt=pd.DataFrame(colocFilt['filter'], index=colocFilt.index, columns=['filter'])
     return colocFilt
 
@@ -362,6 +750,42 @@ def assign_properties(g, communities, colors, pos=None, node_coord_sf=200, simmi
     # Centrality calculation
     node_centralities_bet = nx.betweenness_centrality(g)
     node_pr_uw = nx.pagerank(g, max_iter=1000, weight=None)
+
+    # Signed stats
+    
+    # Rebuild signed weights on the (already thr-filtered) edge set,
+    # since gCol currently holds abs(x_diff) for edge thickness.
+    G_signed = g.copy()
+
+    G_pos = G_signed.copy()
+    G_pos.remove_edges_from(
+        [(a, b) for a, b, attrs in G_pos.edges(data=True) if attrs['weight'] <= 0]
+    )
+    G_neg = G_signed.copy()
+    G_neg.remove_edges_from(
+        [(a, b) for a, b, attrs in G_neg.edges(data=True) if attrs['weight'] >= 0]
+    )
+
+
+    bw_pos = nx.betweenness_centrality(G_pos)
+    bw_neg = nx.betweenness_centrality(G_neg)
+    #bw_npg = [np.log2((1e-10 + bw_pos[n]) / (1e-10 + bw_neg[n])) for n in g.nodes]
+    #bw_npg = np.abs(np.array(bw_npg))  # size by magnitude of imbalance
+    bw_npg = {
+    n: np.abs(np.log2((1e-10 + bw_pos[n]) / (1e-10 + bw_neg[n])))
+    for n in g.nodes
+    }
+
+
+    pr_pos = nx.pagerank(G_pos)
+    pr_neg = nx.pagerank(G_neg)
+    #pr_npg = [np.log2((1e-10 + pr_pos[n]) / (1e-10 + pr_neg[n])) for n in g.nodes]
+    #pr_npg = np.abs(np.array(pr_npg))  # size by magnitude of imbalance
+    pr_npg = {
+    n: np.abs(np.log2((1e-10 + pr_pos[n]) / (1e-10 + pr_neg[n])))
+    for n in g.nodes
+    }
+
     
 
     # Graph properties
@@ -374,6 +798,8 @@ def assign_properties(g, communities, colors, pos=None, node_coord_sf=200, simmi
         node = g.nodes[node_id]
         node['size_betweeness'] = 10 + node_centralities_bet[node_id] * 100
         node['size_pagerank_uw'] = 10 + node_pr_uw[node_id] * 100
+        node['size_betweeness_signed'] = 2+bw_npg[node_id]
+        node['size_pagerank_signed'] = 2+pr_npg[node_id] * 5
         node['shape'] = 'circle'
         
         for community_counter, community_members in enumerate(communities):
@@ -408,6 +834,106 @@ def assign_properties(g, communities, colors, pos=None, node_coord_sf=200, simmi
         for node_id in g.nodes:
             node = g.nodes[node_id]
             node['size_pagerank'] = 10 + node_pr[node_id] * 100
-            
-            
+                     
 #%%
+
+def compute_network_stats(G, signed=True):
+    """Compute standard centrality statistics for a (signed) NetworkX graph.
+
+    Calculates betweenness centrality, PageRank (unweighted), and total degree
+    centrality, as well as degree centrality split into positive-edge degree and
+    negative-edge degree.
+
+    Parameters
+    ----------
+    G : nx.Graph
+        Graph with numeric edge weights (positive = enriched co-localization or
+        communication, negative = depleted).
+
+    Returns
+    -------
+    nw_stats : pd.DataFrame
+        DataFrame indexed by node with columns:
+        ``betweenness``, ``degree``, ``pagerank``,
+        ``degree_positive``, ``degree_negative``.
+    """
+    nodes = list(G.nodes)
+    nw_stats = pd.DataFrame({
+        'betweenness': [nx.betweenness_centrality(G)[n] for n in nodes],
+        'pagerank':    [nx.pagerank(G, weight=None)[n] for n in nodes],
+    }, index=nodes)
+
+    G_pos = G.copy()
+    G_pos.remove_edges_from(
+        [(a, b) for a, b, attrs in G_pos.edges(data=True) if attrs['weight'] <= 0]
+    )
+    deg_pos = pd.Series(nx.degree_centrality(G_pos), name='degree_positive')
+
+    G_neg = G.copy()
+    G_neg.remove_edges_from(
+        [(a, b) for a, b, attrs in G_neg.edges(data=True) if attrs['weight'] >= 0]
+    )
+    deg_neg = pd.Series(nx.degree_centrality(G_neg), name='degree_negative')
+
+    nw_stats = pd.concat([nw_stats, deg_pos.loc[nodes], deg_neg.loc[nodes]], axis=1)
+    nw_stats.columns = ['betweenness', 'pagerank',
+                        'degree_positive', 'degree_negative']
+
+    if signed:
+        t3=pd.DataFrame({'betweenness_pos':[nx.betweenness_centrality(G_pos)[x] for x in list(G_pos.nodes)], 
+                 'pagerank_pos':[nx.pagerank(G_pos)[x] for x in list(G_pos.nodes)]})
+        t3.index=list(G_pos.nodes)
+
+        t4=pd.DataFrame({'betweenness_neg':[nx.betweenness_centrality(G_neg)[x] for x in list(G_neg.nodes)], 
+                        'pagerank_neg':[nx.pagerank(G_neg)[x] for x in list(G_neg.nodes)]})
+        t4.index=list(G_neg.nodes)
+
+        nw_stats['betweenness']=np.log2((1e-10+t3.betweenness_pos)/(1e-10+t4.betweenness_neg))
+        nw_stats['pagerank']=np.log2((1e-10+t3.pagerank_pos)/(1e-10+t4.pagerank_neg))
+
+    return nw_stats
+
+#%%
+
+def plot_top_stats(nw_stats, top_n=None, title_suffix=''):
+    """Bar plots of the top nodes by betweenness, PageRank, and signed degree centrality.
+
+    Parameters
+    ----------
+    nw_stats : pd.DataFrame
+        Output of :func:`compute_network_stats`.
+    top_n : int or None, default None
+        If provided, only the top *n* nodes by each metric are shown.
+        If ``None``, all nodes are shown (useful for small networks).
+    title_suffix : str, default ''
+        Optional string appended to each subplot title (e.g. a process category name).
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure containing four bar-plot axes (betweenness, PageRank,
+        positive degree, negative degree).
+    """
+    import seaborn as sns
+    cols_colors = [
+        ('betweenness',    'purple'),
+        ('pagerank',       'purple'),
+        ('degree_positive','red'),
+        ('degree_negative','blue'),
+    ]
+    titles = [
+        f'Betweenness {title_suffix}',
+        f'Pagerank {title_suffix}',
+        f'Degree_positive {title_suffix}',
+        f'Degree_negative {title_suffix}',
+    ]
+
+    fig, axes = plt.subplots(1, 4, figsize=(28, 4 if top_n else 7))
+    for ax, (col, color), title in zip(axes, cols_colors, titles):
+        d = nw_stats.sort_values(col, ascending=False)
+        if top_n:
+            d = d.iloc[:top_n]
+        sns.barplot(ax=ax, y=d.index, x=col, data=d, color=color)
+        ax.set_title(title)
+    fig.tight_layout()
+    return fig

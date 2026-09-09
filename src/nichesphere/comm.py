@@ -8,6 +8,7 @@ import matplotlib.colors as mcolors
 import networkx as nx
 import sklearn
 from matplotlib.colors import ListedColormap
+from scipy.stats import ranksums
 
 def unique(array):
     """get unique elements in array without re-sorting
@@ -64,7 +65,7 @@ def calculate_LR_CT_pair_scores_dir(ccommTable, LRscoresCol):
     scores = ccommTable[LRscoresCol].groupby(ccommTable['allpair']).sum()
     return scores
 #%%
-def lr_ctPairScores_perCat_dir(ccommTable, db, dbCatCol, dbMatchCol, ccommMatchCol, ccommLRscoresCol, oneCTinteractions, condition, pairCatDF):
+def lr_ctPairScores_perCat_dir_old(ccommTable, db, dbCatCol, dbMatchCol, ccommMatchCol, ccommLRscoresCol, oneCTinteractions, condition, pairCatDF):
     """Calculate cell communication scores per ligand category from a database
     
     Parameters
@@ -114,8 +115,112 @@ def lr_ctPairScores_perCat_dir(ccommTable, db, dbCatCol, dbMatchCol, ccommMatchC
         
     return CTpairScores_byCat
 
+# %%
 
-#%%
+def lr_ctPairScores_perCat_dir(ccommTable, db, dbCatCol, dbMatchCol, ccommMatchCol, ccommLRscoresCol, oneCTinteractions, condition, pairCatDF):
+    """Calculate cell communication scores per ligand category from a database
+    
+    Parameters
+    ----------
+    ccommTable : pd.DataFrame
+        Condition specific cell - cell communication table (output from CrossTalkeR)
+    db : pd.DataFrame
+        database table with information about element (ligand or receptor or both) category (eg: biological processes)
+    dbCatCol : str
+        column in the database table containing the category (eg: biological process) with which the ligands/receptors/LR pairs are associated
+    dbMatchCol : str
+        column in the database table containing the elements (ligands/receptors/LR pairs) associated to the categories
+    ccommMatchCol : str
+        column in the ccommTable table containing the elements (ligands/receptors/LR pairs) associated to the categories
+    ccommLRscoresCol : str
+        name of the ccommTable column where the LR scores are (usually 'MeanLR' for CrossTalkeR)
+    oneCTinteractions : list
+        list of single cell interactions (celltype@celltype)
+    condition : str
+        name of the analyzed condition (a column with this string will be added to the resulting table)
+    pairCatDF : pd.DataFrame
+        dataframe of cell pairs and corresponding co-localization niche pairs
+    Returns
+    -------
+    CTpairScores_byCat : pd.DataFrame
+        cell communication table with new columns 'cell_pairs', 'niche_pairs', 'LRcat' and 'condition'
+    """
+
+    # 1. Prepare pairCatDF lookup indexed by cell_pairs
+    pairCat_indexed = pairCatDF.set_index("cell_pairs", drop=False)
+
+    # 2. Filter ccommTable against oneCTinteractions
+    ccomm_filtered = ccommTable[
+        ~ccommTable["cellpair"].isin(oneCTinteractions)
+    ].copy()
+
+    if ccomm_filtered.empty:
+        return pd.DataFrame()
+
+    ccomm_filtered["match_key"] = (
+        ccomm_filtered[ccommMatchCol].astype(str).str.lower()
+    )
+
+    # Clean db match keys
+    db_clean = db[[dbCatCol, dbMatchCol]].drop_duplicates().copy()
+    db_clean[dbMatchCol] = db_clean[dbMatchCol].astype(str).str.lower()
+
+    # 3. Preserve EXACT category iteration order from original function
+    unique_cats = db[dbCatCol].unique()
+
+    category_dfs = []
+
+    # Iterate through unique categories in original sequence
+    for cat in unique_cats:
+        # Get matching elements for this category
+        cat_matches = db_clean.loc[
+            db_clean[dbCatCol] == cat, dbMatchCol
+        ].tolist()
+        sub_ccomm = ccomm_filtered[
+            ccomm_filtered["match_key"].isin(cat_matches)
+        ]
+
+        if sub_ccomm.empty:
+            continue
+
+        # Compute LR scores (returns pandas Series/DataFrame indexed by allpair)
+        ccommScores_plt = pd.DataFrame(
+            calculate_LR_CT_pair_scores_dir(
+                ccommTable=sub_ccomm, LRscoresCol=ccommLRscoresCol
+            )
+        )
+
+        if ccommScores_plt.empty:
+            continue
+
+        # Extract cellpair format (ct1->ct2) exactly as in original code
+        split_idx = ccommScores_plt.index.str.split("/")
+        ct1 = split_idx.str[0]
+        ct2 = split_idx.str[1].str.split("@").str[1]
+        ccommScores_plt["cellpair"] = ct1 + "->" + ct2
+
+        # Look up corresponding rows from pairCatDF
+        boxplotDF = pairCat_indexed.loc[ccommScores_plt["cellpair"]].copy()
+
+        # Re-assign index to match ccommScores_plt.index (allpair index)
+        boxplotDF.index = ccommScores_plt.index
+
+        # Add remaining columns in exact order of original code
+        boxplotDF["LRscores"] = ccommScores_plt[ccommLRscoresCol]
+        boxplotDF["LRcat"] = cat
+
+        category_dfs.append(boxplotDF)
+
+    # 4. Concatenate and attach condition column at the end
+    if category_dfs:
+        CTpairScores_byCat = pd.concat(category_dfs)
+    else:
+        CTpairScores_byCat = pd.DataFrame()
+
+    CTpairScores_byCat["condition"] = condition
+
+    return CTpairScores_byCat
+# %%
 
 def equalizeScoresTables(ctrlTbl, expTbl, ctrlCondition, expCondition):
     """Makes communication score tables contain the same interactions through adding 0s to be compared
@@ -151,7 +256,7 @@ def equalizeScoresTables(ctrlTbl, expTbl, ctrlCondition, expCondition):
 
     return ctrlTbl, expTbl
 #%%
-def diffCcommStats(c1CTpairScores_byCat, c2CTpairScores_byCat, cellCatCol):
+def diffCcommStats_old(c1CTpairScores_byCat, c2CTpairScores_byCat, cellCatCol):
     """Differential cell communication per LR category (eg: biological process)
     
     Parameters
@@ -180,7 +285,75 @@ def diffCcommStats(c1CTpairScores_byCat, c2CTpairScores_byCat, cellCatCol):
         diffCommTable=pd.concat([diffCommTable, tmp])
     
     return diffCommTable
-#%%
+# %%
+
+def diffCcommStats(c1CTpairScores_byCat, c2CTpairScores_byCat, cellCatCol):
+    """Differential cell communication per LR category (eg: biological process)
+    
+    Parameters
+    ----------
+    c1CTpairScores_byCat : pd.DataFrame
+        exp cell communication table with all interactions
+    c2CTpairScores_byCat : pd.DataFrame
+        control cell communication table with all interactions
+    cellCatCol : str
+        name of the column in the communication tables containing the cell pair grouping we would like to compare
+        (eg: 'niche_pairs', 'cell_pairs')
+    Returns
+    -------
+    diffCommTable : pd.DataFrame
+        dataframe of Wilcoxon statictics and p-values for each cell pair grouping in each LR category (eg: biological process)
+        columns are named 'wilcoxStat', 'wilcoxPval', 'cellCat' and 'LRcat'
+    
+    """
+
+    # 1. Pre-group data into lookup dictionaries keyed by (LRcat, cellCat)
+    # This extracts matching score arrays in O(1) time without repeated boolean masks
+    g1 = dict(
+        tuple(
+            c1CTpairScores_byCat.groupby(["LRcat", cellCatCol])["LRscores"]
+        )
+    )
+    g2 = dict(
+        tuple(
+            c2CTpairScores_byCat.groupby(["LRcat", cellCatCol])["LRscores"]
+        )
+    )
+
+    # 2. Pre-extract unique values once
+    lr_categories = c1CTpairScores_byCat["LRcat"].unique()
+    cell_categories = c1CTpairScores_byCat[cellCatCol].unique()
+
+    # Empty array/list to collect results in one pass
+    records = []
+
+    # 3. Iterate through category pairs with O(1) dictionary lookups
+    for lr_cat in lr_categories:
+        for cell_cat in cell_categories:
+            # Grab scores or empty array if key combination doesn't exist
+            scores1 = g1.get((lr_cat, cell_cat), pd.Series(dtype=float)).values
+            scores2 = g2.get((lr_cat, cell_cat), pd.Series(dtype=float)).values
+
+            # Only compute ranksums if both groups have observations
+            if len(scores1) > 0 and len(scores2) > 0:
+                # Call ranksums ONCE per pair
+                stat, pval = ranksums(scores1, scores2)
+            else:
+                stat, pval = np.nan, np.nan
+
+            records.append(
+                {
+                    "wilcoxStat": stat,
+                    "wilcoxPval": pval,
+                    "cellCat": cell_cat,
+                    "LRcat": lr_cat,
+                }
+            )
+
+    # 4. Construct final DataFrame at once
+    return pd.DataFrame(records)
+
+# %%
 
 def plotDiffCcommStatsHM(diffCommTable, min_pval, vmin=None, vmax=None):
     """Plot heatmap of differential cell communication statistics
@@ -219,7 +392,7 @@ def plotDiffCcommStatsHM(diffCommTable, min_pval, vmin=None, vmax=None):
     return x_hm, plot
 
 #%%
-def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
+def getDiffComm_old(diffCommTbl, pairCatDF, ncells, cat):
     """get the differential communication scores for a specific LR category
     
     Parameters
@@ -238,12 +411,12 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
         cells x cells or groups x groups dataframe of differential communication scores for a specific LR category
     """
     x=pd.DataFrame(pairCatDF.cell_pairs)
-    x['wilcoxStat']=0
+    x['wilcoxStat']=0.0
     x.index=pairCatDF.cell_pairs
 
     
     for i in diffCommTbl.columns:
-        x.wilcoxStat[i]=diffCommTbl[i][cat]
+        x.loc[i, 'wilcoxStat']=diffCommTbl[i][cat]
 
     
     x=pd.Series(x.wilcoxStat)
@@ -254,6 +427,46 @@ def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
     return x_chem
 
 #%%
+
+def getDiffComm(diffCommTbl, pairCatDF, ncells, cat):
+    """get the differential communication scores for a specific LR category
+    
+    Parameters
+    ----------
+    diffCommTbl : pd.DataFrame
+        differential communication scores dataframe of cell pairs (or groupings) x LR categories
+        (obtained with plotDiffCcommStatsHM function)
+    pairCatDF : pd.DataFrame
+    ncells : int
+        number of cells or groups
+    cat : str 
+        LR category to be tested
+    Returns
+    -------
+    x_chem : pd.DataFrame
+        cells x cells or groups x groups dataframe of differential communication scores for a specific LR category
+    """
+
+    # 1. Extract the specific category series from diffCommTbl
+    cat_scores = (
+        diffCommTbl.loc[cat] if cat in diffCommTbl.index else diffCommTbl[cat]
+    )
+
+    # 2. Map scores directly to cell_pairs using vector mapping
+    scores = pairCatDF["cell_pairs"].map(cat_scores).fillna(0.0).values
+
+    # 3. Reshape into (ncells x ncells) matrix
+    x_chem = pd.DataFrame(scores.reshape(-1, ncells))
+
+    # 4. Extract unique cell type names in PRESERVED appearance order using pd.unique
+    cell_names = pd.unique(pairCatDF["cell_pairs"].str.split("->").str[0])
+
+    # 5. Assign row and column labels
+    x_chem.columns = cell_names
+    x_chem.index = cell_names
+
+    return x_chem
+# %%
 
 def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, color_group=None, plot_title='', 
           clist=None, nodeSize=None, legend_ax=[0.7, 0.05, 0.15, 0.2], layout='neato', thr=0, fsize=(8,8), alpha=1, lab_spacing=7, edge_scale=1, pos=None):    
@@ -282,7 +495,9 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
         alternatively , one can input a list of niche colors
     nodeSize : str (default: None)
         value that will define the size of the nodes. Options are 'betweeness', 
-        'pagerank' (network statistics)
+        'pagerank' , 'signed_betweeness', 'signed_pagerank' (network statistics; 
+        the 'signed_*' options size nodes by |log2((pos+eps)/(neg+eps))|, 
+        matching nichesphere.tl.compute_network_stats)
     legend_ax : list (default: [0.7, 0.05, 0.15, 0.2])
         legend position in the form [x0, y0, width, height]
     layout : str (default: 'neato')
@@ -342,7 +557,7 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
     graycmp = ListedColormap(graycmp)
     
     #cell group cmap
-    cmap = plt.cm.get_cmap(group_cmap, ncols)
+    cmap = plt.colormaps[group_cmap].resampled(ncols)
     if clist == None:
         cgroup_cmap=[mcolors.rgb2hex(cmap(i)[:3]) for i in range(cmap.N)]
     else:
@@ -359,11 +574,22 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
        
     ## Node color groups
     if color_group is None:
-        color_group=pd.Series(list(G.nodes))
-        i=0
-        for k in list(cell_group.keys()):
-            color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
-            i=i+1
+        ## FIX: Map node colors based on exact dictionary key order matching G.nodes()
+        niche_keys = list(cell_group.keys())
+        niche_color_map = {niche_keys[i]: cgroup_cmap[i] for i in range(len(niche_keys))}
+        
+        node_to_color = {}
+        for niche_id, members in cell_group.items():
+            assigned_color = niche_color_map[niche_id]
+            for node in members:
+                node_to_color[node] = assigned_color
+
+        color_group = pd.Series([node_to_color.get(node, '#cccccc') for node in list(G.nodes)], index=list(G.nodes))
+        #color_group=pd.Series(list(G.nodes))
+        #i=0
+        #for k in list(cell_group.keys()):
+        #    color_group[[cellCatContained(pair=p, cellCat=cell_group[k]) for p in color_group]]=cgroup_cmap[i]
+        #    i=i+1
         
     ## Edge thickness
     for x in list(G.edges):
@@ -448,6 +674,38 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
         nx.draw_networkx_nodes(G,pos,node_size=50+1000*((npg)/(np.max(npg))),
             node_color=color_group,ax=ax1)
 
+    #### signed stats node sizes
+    if nodeSize in ('signed_betweeness', 'signed_pagerank'):
+
+        pos_edges=pos
+        # Rebuild signed weights on the (already thr-filtered) edge set,
+        # since gCol currently holds abs(x_diff) for edge thickness.
+        G_signed = G.copy()
+
+        G_pos = G_signed.copy()
+        G_pos.remove_edges_from(
+            [(a, b) for a, b, attrs in G_pos.edges(data=True) if attrs['weight'] <= 0]
+        )
+        G_neg = G_signed.copy()
+        G_neg.remove_edges_from(
+            [(a, b) for a, b, attrs in G_neg.edges(data=True) if attrs['weight'] >= 0]
+        )
+
+        if nodeSize == 'signed_betweeness':
+            bw_pos = nx.betweenness_centrality(G_pos)
+            bw_neg = nx.betweenness_centrality(G_neg)
+            npg = [np.log2((1e-10 + bw_pos[n]) / (1e-10 + bw_neg[n])) for n in G.nodes]
+
+        if nodeSize == 'signed_pagerank':
+            pr_pos = nx.pagerank(G_pos)
+            pr_neg = nx.pagerank(G_neg)
+            npg = [np.log2((1e-10 + pr_pos[n]) / (1e-10 + pr_neg[n])) for n in G.nodes]
+
+        npg = np.abs(np.array(npg))  # size by magnitude of imbalance
+
+        nx.draw_networkx_nodes(G,pos,node_size=50+1000*((npg)/(np.max(npg))),
+            node_color=color_group,ax=ax1)
+    ####
     if nodeSize == None:
         pos_edges=pos
 

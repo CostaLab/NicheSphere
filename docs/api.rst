@@ -1,9 +1,8 @@
 API Reference
 =============
 
-.. toctree::
-   :maxdepth: 2
-
-   coloc
-   comm
-   tl
+.. include:: coloc.rst
+.. include:: comm.rst
+.. include:: tl.rst
+.. include:: niche_stats.rst
+.. include:: sankey.rst

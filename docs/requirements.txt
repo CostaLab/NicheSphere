@@ -1,13 +1,26 @@
+# New layout tools 
+sphinxcontrib-bibtex
+sphinx-design
+pygments
+ipython
+
+# Documentation Tools
+sphinx-book-theme
 myst-parser
 nbsphinx
-sphinx_rtd_theme
 sphinx
 
+
+# Core Code Dependencies
 pandas
+numpy
 scipy
-seaborn
 matplotlib
+seaborn
 networkx
 POT
 scikit-learn
 scanpy[leiden]
+statsmodels
+joblib
+plotly

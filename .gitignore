@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+data/
+figures/
+results/
+.ipynb_checkpoints/
+*.pyc
+Results_PILOT/
+docs/build/
+docs/_build/
+docs/generated/
+nichesphere/

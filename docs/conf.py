@@ -41,7 +41,11 @@ language = 'en'
 
 # -- BibTeX citation settings
 bibtex_bibfiles = ['references.bib']
+#bibtex_default_style = 'unsrt'
 bibtex_default_style = 'alpha'
+bibtex_reference_style = 'author_year'
+
+
 
 # -- It hides the input/output prompt numbers (In [1]: / Out [1]:).
 nbsphinx_prolog = """

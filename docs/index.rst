@@ -34,6 +34,7 @@ co-localization domains based on Ligand-Receptor pairs expression data, such as 
    installation
    tutorials
    api
+   references
 
 Installation
 ------------
@@ -46,7 +47,7 @@ Installation
 Citation
 --------
 
-If you use ``NicheSphere`` in your research, please cite our paper:
+If you use ``NicheSphere`` in your research, please cite our paper :cite:p:`gleitz_nichesphere_2026`:
 
    **NicheSphere reveals Spp1⁺ macrophages as central hubs coordinating fibrotic remodeling in myeloproliferative neoplasms**
 

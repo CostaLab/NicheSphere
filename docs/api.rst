@@ -1,5 +1,5 @@
-API Reference
-=============
+API
+=====
 
 .. include:: coloc.rst
 .. include:: comm.rst

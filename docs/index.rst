@@ -34,6 +34,7 @@ co-localization domains based on Ligand-Receptor pairs expression data, such as 
    installation
    tutorials
    api
+   references
 
 Installation
 ------------
@@ -46,7 +47,7 @@ Installation
 Citation
 --------
 
-If you use ``NicheSphere`` in your research, please cite our paper:
+If you use ``NicheSphere`` in your research, please cite our paper :cite:p:`gleitz_nichesphere_2026`:
 
    **NicheSphere reveals Spp1⁺ macrophages as central hubs coordinating fibrotic remodeling in myeloproliferative neoplasms**
 
@@ -75,6 +76,8 @@ Tutorials
 
 * :doc:`NicheSphere tutorial — Myocardial Infarction (Visium) </notebooks/Nichesphere_tutorial_MIvisium>`
 * :doc:`NicheSphere × PILOT: niche-based trajectory inference </notebooks/Nichesphere_tutorial_MIvisium_PILOT>`
+* :doc:`NicheSphere PIC-seq tutorial </notebooks/Nichesphere_tutorial_BM_PICseq>`
+* :doc:`NicheSphere x PILOT CODEX tutorial </notebooks/Nichesphere_tutorial_CODEX_PILOT>`
 
 
 
@@ -83,7 +86,7 @@ Docker image and summarized analysis tutorial
 
 We provide access to a Docker image, available at: https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3/container_registry. 
 The Docker image comes preconfigured with all necessary libraries, tools, and software required to follow the hands-on exercises. 
-Additionally, the repository at https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3 contains a summarized Nichesphere 
+Additionally, the repository at https://gitlab.com/sysbiobig/ismb-eccb-2025-tutorial-vt3 contains a summarized NicheSphere 
 co-localization + communication analysis tutorial.
 
 API Reference

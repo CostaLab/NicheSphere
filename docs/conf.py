@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 project = 'NicheSphere'
 copyright = '2025, Mayra Ruiz, James Nagai'
 author = 'Mayra Ruiz, James Nagai'
-release = '1.0.2'
+release = '1.1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -41,7 +41,11 @@ language = 'en'
 
 # -- BibTeX citation settings
 bibtex_bibfiles = ['references.bib']
+#bibtex_default_style = 'unsrt'
 bibtex_default_style = 'alpha'
+bibtex_reference_style = 'author_year'
+
+
 
 # -- It hides the input/output prompt numbers (In [1]: / Out [1]:).
 nbsphinx_prolog = """

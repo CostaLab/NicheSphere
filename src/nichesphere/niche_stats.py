@@ -74,7 +74,7 @@ def community_edge_stats(g: nx.Graph, partition: dict) -> dict:
 
     Counts are numbers of edges (unweighted); weights are sums of absolute edge
     weights (``A_neg`` already stores absolute values, per
-    :func:`_adjacency_from_graph`).  External edges are attributed to *both*
+    :func:`~nichesphere.niche_stats._adjacency_from_graph`).  External edges are attributed to *both*
     communities they connect.
 
     Parameters
@@ -156,11 +156,11 @@ def community_edge_stats(g: nx.Graph, partition: dict) -> dict:
 
 
 def community_edge_stats_df(g: nx.Graph, partition: dict) -> pd.DataFrame:
-    """Flat DataFrame version of :func:`community_edge_stats`.
+    """Flat DataFrame version of :func:`~nichesphere.niche_stats.community_edge_stats`.
 
     Returns one row per community with the count and weight columns.  The
     nested ``external_by_community`` breakdown is omitted (call
-    :func:`community_edge_stats` directly if you need it).
+    :func:`~nichesphere.niche_stats.community_edge_stats` directly if you need it).
 
     Parameters
     ----------
@@ -188,7 +188,7 @@ def community_edge_stats_df(g: nx.Graph, partition: dict) -> pd.DataFrame:
 def community_edge_weight_distributions(g: nx.Graph, partition: dict) -> dict:
     """Raw edge weight lists per community, split by location and sign.
 
-    Uses the same unique-pair iteration as :func:`community_edge_stats` so
+    Uses the same unique-pair iteration as :func:`~nichesphere.niche_stats.community_edge_stats` so
     weights correspond one-to-one with the counts computed there.  External
     edges are attributed to *both* communities they connect.
 

@@ -289,7 +289,7 @@ def get_PIC_BG_OEratios_DF(adata, annot_col, target_pairs, nreps=1000, njobs=10,
                             downsample_cells=False, cell_list_downsample=None,
                             downsampling_factor=6, pseudocount=1e-10):
     """Generate *nreps* sets of O/E ratios for cell type pair co-localization probabilities
-    by running :func:`PIC_BGdoubletsOEratios_parallel` in parallel.
+    by running :func:`~nichesphere.tl.PIC_BGdoubletsOEratios_parallel` in parallel.
 
     Parameters
     ----------
@@ -311,7 +311,7 @@ def get_PIC_BG_OEratios_DF(adata, annot_col, target_pairs, nreps=1000, njobs=10,
     downsampling_factor : int, default 6
         Reduction factor for downsampling.
     pseudocount : float, default 1e-10
-        Pseudocount passed to :func:`PIC_BGdoubletsOEratios_parallel`.
+        Pseudocount passed to :func:`~nichesphere.tl.PIC_BGdoubletsOEratios_parallel`.
 
     Returns
     -------
@@ -631,7 +631,7 @@ def get_pairCatDFdir(niches_df):
 #%%
 
 def processCTKRoutput(ctkrTbl):
-    """Remove suffixes '|L' , '|R' and '|TF' from cell - cell communication (CrossTalkeR) tables
+    """Remove suffixes indicating whether the gene is a ligand (L), receptor (R) or transcription factor (TF) from cell - cell communication (CrossTalkeR) tables
 
     Parameters
     ----------

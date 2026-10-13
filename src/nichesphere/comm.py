@@ -238,7 +238,6 @@ def equalizeScoresTables(ctrlTbl, expTbl, ctrlCondition, expCondition):
     
     Returns
     -------
-    ctrlTbl,expTbl
     ctrlTbl : pd.DataFrame
         control cell communication table with all interactions
     expTbl : pd.DataFrame
@@ -496,7 +495,7 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
     nodeSize : str (default: None)
         value that will define the size of the nodes. Options are 'betweeness', 
         'pagerank' , 'signed_betweeness', 'signed_pagerank' (network statistics; 
-        the 'signed_*' options size nodes by |log2((pos+eps)/(neg+eps))|, 
+        the 'signed_*' options size nodes by abs(log2((pos+eps)/(neg+eps))), 
         matching nichesphere.tl.compute_network_stats)
     legend_ax : list (default: [0.7, 0.05, 0.15, 0.2])
         legend position in the form [x0, y0, width, height]
@@ -521,7 +520,7 @@ def catNW(x_chem,colocNW, cell_group, group=None, group_cmap='tab20', ncols=20, 
     -------
     G : nx.Graph
         Graph object with (differential) cell communication scores as weights
-    Network plot
+        The network plot is displayed.
     """
 
     # Choose colormap

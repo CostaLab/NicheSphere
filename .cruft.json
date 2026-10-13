@@ -1,0 +1,44 @@
+{
+  "template": "https://github.com/scverse/cookiecutter-scverse",
+  "commit": "0dc3c8b6ac90ca11b71e9aa1cc75ee89c6814acf",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "NicheSphere",
+      "package_name": "nichesphere",
+      "project_description": "A very interesting piece of code",
+      "author_full_name": "Mayra Ruiz",
+      "author_email": "aryam950812@gmail.com",
+      "github_user": "CostaLab",
+      "github_repo": "NicheSphere",
+      "license": "MIT License",
+      "ide_integration": true,
+      "issue_categorization": "labels",
+      "_copy_without_render": [
+        ".github/workflows/build.yaml",
+        ".github/workflows/test.yaml",
+        "docs/_templates/autosummary/**.rst"
+      ],
+      "_exclude_on_template_update": [
+        "CHANGELOG.md",
+        "LICENSE",
+        "README.md",
+        "docs/api.md",
+        "docs/index.md",
+        "docs/notebooks/example.ipynb",
+        "docs/references.bib",
+        "docs/references.md",
+        "src/**",
+        "tests/**"
+      ],
+      "_render_devdocs": false,
+      "_jinja2_env_vars": {
+        "lstrip_blocks": true,
+        "trim_blocks": true
+      },
+      "_template": "https://github.com/scverse/cookiecutter-scverse",
+      "_commit": "0dc3c8b6ac90ca11b71e9aa1cc75ee89c6814acf"
+    }
+  },
+  "directory": null
+}

@@ -1,7 +1,5 @@
-__pycache__/
 *.py[cod]
 *.egg-info/
-dist/
 build/
 .eggs/
 data/
@@ -11,6 +9,27 @@ results/
 *.pyc
 Results_PILOT/
 docs/build/
-docs/_build/
+# Temp files
+.DS_Store
+*~
+buck-out/
+
+# Compiled files
+.venv/
+uv.lock
+__pycache__/
+.*cache/
+
+# Distribution / packaging
+/dist/
+
+# Tests and coverage
+/data/
+/node_modules/
+/.coverage*
+
+# docs
+/docs/generated/
+/docs/_build/
+
 docs/generated/
-nichesphere/

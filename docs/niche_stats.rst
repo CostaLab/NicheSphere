@@ -16,3 +16,4 @@ Tools to test and visualize the internal cohesion of each niche relative to its 
    ~nichesphere.niche_stats.community_signed_weight_distributions
    ~nichesphere.niche_stats.pairwise_ranksums_int_ext
    ~nichesphere.niche_stats.plot_internal_external_boxplots
+   ~nichesphere.niche_stats._adjacency_from_graph

@@ -14,7 +14,7 @@ Focused on differential communication
    ~nichesphere.comm.catNW
    ~nichesphere.comm.cellCatContained
    ~nichesphere.comm.diffCcommStats
-   ~nichesphere.comm.equalizeScoresTable
+   ~nichesphere.comm.equalizeScoresTables
    ~nichesphere.comm.getDiffComm
    ~nichesphere.comm.lr_ctPairScores_perCat_dir
    ~nichesphere.comm.plotDiffCcommStatsHM

@@ -1,8 +1,11 @@
 API
-=====
+===
 
-.. include:: coloc.rst
-.. include:: comm.rst
-.. include:: tl.rst
-.. include:: niche_stats.rst
-.. include:: sankey.rst
+.. toctree::
+   :maxdepth: 1
+
+   coloc
+   comm
+   tl
+   niche_stats
+   sankey

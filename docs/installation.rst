@@ -20,6 +20,7 @@ Before installing, ensure you have the following:
 
 
 .. _installation_standard:
+
 Standard Installation
 ---------------------
 The easiest way to install **NicheSphere** is directly from `PyPI <https://pypi.org>`_:
@@ -30,8 +31,9 @@ The easiest way to install **NicheSphere** is directly from `PyPI <https://pypi.
 
 
 .. _installation_github:
+
 From GitHub (Development Version)
------------
+---------------------------------
 If you want to install the latest development version from the source:
 
 .. code-block:: bash
